@@ -9,6 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 import { GoogleOauthGuard } from './guards/google-oauth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -25,11 +26,11 @@ export class AuthController {
   async googleAuthCallback(@Req() req, @Res() res: Response) {
     try {
       const token = await this.authservice.signIn(req.user);
-
       // Set the access token as a cookie
       res.cookie('access_token', token, {
         maxAge: 2592000000, // 30 days
-        sameSite: true,
+        sameSite: 'strict',
+        httpOnly: true,
         secure: false, // Should be true in production if using HTTPS
       });
 
@@ -44,5 +45,10 @@ export class AuthController {
         message: 'Internal Server Error',
       });
     }
+  }
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  getProfile(@Req() req) {
+    return req.user;
   }
 }

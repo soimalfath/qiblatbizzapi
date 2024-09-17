@@ -40,16 +40,19 @@ export class AuthService {
   async registerUser(user: RegisterUserDto) {
     try {
       const newUser = this.userRepository.create(user);
-      newUser.username = generateFromEmail(user.email, 5);
-
+      newUser.name = generateFromEmail(user.email, 5);
       await this.userRepository.save(newUser);
-
-      return this.generateJwt({
+      const jwt = this.generateJwt({
         sub: newUser.id,
         email: newUser.email,
       });
-    } catch {
-      throw new InternalServerErrorException();
+
+      return jwt;
+    } catch (error) {
+      console.error('Error in registerUser:', error);
+      throw new InternalServerErrorException(
+        'Failed to register user: ' + error.message,
+      );
     }
   }
 

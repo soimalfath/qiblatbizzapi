@@ -9,11 +9,18 @@ import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import config from './../../config/jwt.config';
+import { DatabaseModule } from 'src/database/database.module';
+import databaseConfig from 'src/config/database.config';
 
 @Module({
   imports: [
+    DatabaseModule,
     PassportModule,
     TypeOrmModule.forFeature([UserEntity]),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [databaseConfig],
+    }),
     ConfigModule.forFeature(config),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -26,6 +33,6 @@ import config from './../../config/jwt.config';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, GoogleStrategy],
-  exports: [AuthService], // Export AuthService jika diperlukan di modul lain
+  exports: [AuthService, DatabaseModule], // Export AuthService jika diperlukan di modul lain
 })
 export class AuthModule {}

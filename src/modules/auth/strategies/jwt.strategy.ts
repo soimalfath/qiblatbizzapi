@@ -24,7 +24,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       if (req && req.cookies) {
         token = req.cookies['access_token'];
       }
-      console.log('token', token);
       return token || ExtractJwt.fromAuthHeaderAsBearerToken()(req);
     };
 
@@ -39,9 +38,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const user = await this.userRepository.findOne({
       where: { email: payload.email },
     });
-
-    console.log(user);
-
     if (!user) throw new UnauthorizedException('Please log in to continue');
 
     return {

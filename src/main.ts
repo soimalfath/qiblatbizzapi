@@ -2,27 +2,20 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
-// import * as session from 'express-session';
-// import * as passport from 'passport';
+import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 async function bootstrap() {
   console.log('NODE_ENV:', process.env.NODE_ENV);
   const app = await NestFactory.create(AppModule);
-  // Set up session middleware
-  // app.use(
-  //   session({
-  //     secret: 'your-secret-key', // Replace with your own secret key
-  //     resave: false,
-  //     saveUninitialized: false,
-  //     cookie: { secure: false }, // Set `secure: true` in production with HTTPS
-  //   }),
-  // );
-
-  // // Initialize Passport and session management
-  // app.use(passport.initialize());
-  // app.use(passport.session());
   app.useGlobalPipes(new ValidationPipe());
+  const corsOptions: CorsOptions = {
+    origin: 'http://127.0.0.1:5173', // Mengizinkan asal ini
+    credentials: true, // Jika menggunakan cookies atau header otentikasi
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Authorization',
+  };
   app.use(cookieParser());
+  app.enableCors(corsOptions);
   await app.listen(5000, () => {
     console.log(`⚡️crud-apps: Server is running at http://localhost:5000`);
   });

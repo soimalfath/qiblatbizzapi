@@ -67,16 +67,9 @@ export class RefreshTokenStrategy extends PassportStrategy(
 
   private async validateRefreshToken(token: string): Promise<boolean> {
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      await this.jwtService.verifyAsync(token, {
         secret: this.configService.get('config.refresh.secret'),
       });
-
-      // Periksa apakah token sudah kadaluarsa
-      const currentTimestamp = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < currentTimestamp) {
-        return false;
-      }
-
       return true;
     } catch (error) {
       return false;

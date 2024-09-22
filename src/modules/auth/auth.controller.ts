@@ -34,8 +34,6 @@ export class AuthController {
         req.user,
       );
 
-      console.log('access_token', access_token, 'refresh_token', refresh_token);
-
       this.setRefreshTokenCookie(res, refresh_token);
 
       const callbackURL = this.configService.get('FRONT_END_URL');
@@ -54,10 +52,8 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   async refreshTokens(@Req() req, @Res() res: Response) {
     try {
-      console.log('res', req.cookies['refresh_token']);
       const { access_token, refresh_token } =
         await this.authService.refreshTokens(req.cookies['refresh_token']);
-      console.log(refresh_token);
       this.setRefreshTokenCookie(res, refresh_token);
 
       return res.json({ access_token });
@@ -95,10 +91,5 @@ export class AuthController {
       sameSite: 'lax',
       path: '/',
     });
-  }
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  getProfile(@Req() req) {
-    return req.user;
   }
 }

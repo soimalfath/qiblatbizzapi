@@ -96,7 +96,6 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-
       return this.generateTokens(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -106,7 +105,7 @@ export class AuthService {
   async validateRefreshToken(refreshToken: string) {
     try {
       const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
-        secret: this.configService.get('config.jwt,secret'),
+        secret: this.configService.get('config.refresh.secret'),
       });
 
       const user = await this.userRepository.findOne({

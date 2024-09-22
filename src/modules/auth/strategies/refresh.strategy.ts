@@ -8,6 +8,10 @@ import { Repository } from 'typeorm';
 import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 
+export type JwtPayload = {
+  sub: string;
+  email: string;
+};
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(
   Strategy,
@@ -30,7 +34,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
     });
   }
 
-  async validate(req: Request, payload: any) {
+  async validate(req: Request, payload: JwtPayload) {
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {

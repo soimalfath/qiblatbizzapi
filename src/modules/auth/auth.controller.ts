@@ -38,8 +38,10 @@ export class AuthController {
 
       this.setRefreshTokenCookie(res, refresh_token);
 
-      const callbackURL = this.configService.get('AUTH_CALLBACK');
-      return res.redirect(`${callbackURL}?access_token=${access_token}`);
+      const callbackURL = this.configService.get('FRONT_END_URL');
+      return res.redirect(
+        `${callbackURL}/auth/callback?access_token=${access_token}`,
+      );
     } catch (error) {
       console.error('Google auth callback error:', error);
       return res
@@ -52,8 +54,10 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   async refreshTokens(@Req() req, @Res() res: Response) {
     try {
+      console.log('res', req.cookies['refresh_token']);
       const { access_token, refresh_token } =
-        await this.authService.refreshTokens(req.user);
+        await this.authService.refreshTokens(req.cookies['refresh_token']);
+      console.log(refresh_token);
       this.setRefreshTokenCookie(res, refresh_token);
 
       return res.json({ access_token });

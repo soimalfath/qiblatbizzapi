@@ -4,7 +4,9 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsEnum,
 } from 'class-validator';
+import { Role } from 'src/modules/auth/enum/role.enum';
 
 export class CreateUserDto {
   @IsEmail()
@@ -26,6 +28,10 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   providerID: string;
+
+  @IsEnum(Role)
+  @IsNotEmpty()
+  role: number;
 }
 
 export class UpdateUserDto {
@@ -67,4 +73,7 @@ export class UserResponseDto {
 
   @IsString()
   updatedAt: string;
+
+  @IsEnum(Role)
+  role: Role;
 }

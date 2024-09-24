@@ -72,7 +72,7 @@ export class AuthService {
   }
 
   private generateTokens(user: UserEntity) {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
 
     const access_token = this.generateJwt(payload);
     const refresh_token = this.generateRefresh(payload);

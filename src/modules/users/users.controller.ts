@@ -20,12 +20,13 @@ export class UserController {
         picture: userData.picture,
         createdAt: userData.createdAt,
         updateAt: userData.updatedAt,
+        role: userData.role === 0 ? 'user' : 'admin',
       };
       return res
         .status(HttpStatus.OK)
-        .json(ResponseHelper.success('get profile success', user));
+        .json(ResponseHelper.success('Get profile success', user));
     } catch (err) {
-      console.error('failed get user profile', err);
+      console.error('Failed get user profile', err);
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json(ResponseHelper.error('Failed to get profile', err.message));

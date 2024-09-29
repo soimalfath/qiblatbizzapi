@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { GoogleOauthGuard } from './guards/google-oauth.guard';
 import { ResponseHelper } from 'src/utils/response.helper';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -28,7 +28,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleOauthGuard)
-  async googleAuthCallback(@Req() req, @Res() res: Response) {
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     try {
       const { access_token, refresh_token } = await this.authService.signIn(
         req.user,
@@ -50,7 +50,7 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(RefreshTokenGuard)
-  async refreshTokens(@Req() req, @Res() res: Response) {
+  async refreshTokens(@Req() req: Request, @Res() res: Response) {
     try {
       const { access_token, refresh_token } =
         await this.authService.refreshTokens(req.cookies['refresh_token']);

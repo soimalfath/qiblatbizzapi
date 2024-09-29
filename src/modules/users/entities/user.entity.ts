@@ -4,9 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 import { Role } from 'src/modules/auth/enum/role.enum';
+import { ProductEntity } from 'src/modules/products/entities/product.entity';
 
 @Entity('users')
 export class UserEntity {
@@ -36,4 +38,7 @@ export class UserEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => ProductEntity, (product) => product.user)
+  products: ProductEntity;
 }

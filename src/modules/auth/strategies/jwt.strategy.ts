@@ -10,6 +10,7 @@ import { UserEntity } from 'src/modules/users/entities/user.entity';
 export type JwtPayload = {
   sub: string;
   email: string;
+  role: number;
 };
 
 @Injectable()
@@ -43,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return {
       id: payload.sub,
       email: payload.email,
+      role: payload.role,
     };
   }
 }

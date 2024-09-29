@@ -13,4 +13,11 @@ export class UserService {
   async getUserProfile(id: string) {
     return await this.userRepository.findOne({ where: { id } });
   }
+
+  async getAllUser() {
+    const users = await this.userRepository.find({
+      where: { role: '1' as any },
+    });
+    return users;
+  }
 }

@@ -40,9 +40,8 @@ export class ProductsController {
       if (product) {
         return res
           .status(HttpStatus.OK)
-          .json(ResponseHelper.success('Succes add products'));
+          .json(ResponseHelper.success('Succes add products', product));
       }
-      return;
     } catch (err) {
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -71,14 +70,14 @@ export class ProductsController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async findOne(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     try {
       const user = req.user as UserEntity;
-      const id = user.id;
-      const product = await this.productsService.findOne(+id, id);
+      const Userid = user.id;
+      const product = await this.productsService.findOne(+id, Userid);
       return res
         .status(HttpStatus.OK)
         .json(ResponseHelper.success('Succes get products', product));
@@ -93,7 +92,7 @@ export class ProductsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   async update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Req() req: Request,
     @Res() res: Response,
     @Body() updateProductDto: UpdateProductDto,
@@ -125,14 +124,14 @@ export class ProductsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async remove(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     try {
       const user = req.user as UserEntity;
-      const id = user.id;
-      const product = await this.productsService.findOne(+id, id);
+      const userId = user.id;
+      const product = await this.productsService.findOne(+id, userId);
       if (product) {
         const result = await this.productsService.remove(+id);
         if (result.affected !== 0) {

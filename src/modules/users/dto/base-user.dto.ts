@@ -6,7 +6,7 @@ import {
   IsUUID,
   IsEnum,
 } from 'class-validator';
-import { Role } from 'src/modules/auth/enum/role.enum';
+import { Role } from '../../auth/enum/role.enum';
 
 export class CreateUserDto {
   @IsEmail()

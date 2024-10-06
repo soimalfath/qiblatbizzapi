@@ -6,12 +6,12 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh.strategy';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from 'src/modules/users/entities/user.entity';
+import { UserEntity } from '../users/entities/user.entity';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import config from './../../config/jwt.config';
-import { DatabaseModule } from 'src/database/database.module';
-import databaseConfig from 'src/config/database.config';
+import { DatabaseModule } from './../../database/database.module';
+import databaseConfig from './../../config/database.config';
 
 @Module({
   imports: [

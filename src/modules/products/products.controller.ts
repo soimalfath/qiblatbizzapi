@@ -17,7 +17,7 @@ import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request, Response } from 'express';
 import { UserEntity } from '../users/entities/user.entity';
-import { ResponseHelper } from 'src/utils/response.helper';
+import { ResponseHelper } from '../../utils/response.helper';
 
 @Controller('products')
 export class ProductsController {

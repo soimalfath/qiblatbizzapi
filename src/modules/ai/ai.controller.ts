@@ -5,7 +5,7 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
+  // Query,
   Res,
   Body,
   HttpStatus,
@@ -13,13 +13,13 @@ import {
 } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { Response, Request } from 'express';
-import { ResponseHelper } from 'src/utils/response.helper';
+import { ResponseHelper } from '../../utils/response.helper';
 import { lastValueFrom } from 'rxjs';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProductsService } from '../products/products.service';
 import { GenerateCopywriting } from './dto/create-ai.dto';
-import { prompt } from 'src/helper/prompt';
+import { prompt } from '../../helper/prompt';
 import { UserEntity } from '../users/entities/user.entity';
 // import { CreateAiDto } from './dto/create-ai.dto';
 // import { UpdateAiDto } from './dto/update-ai.dto';

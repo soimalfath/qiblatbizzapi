@@ -7,8 +7,8 @@ import {
   OneToMany,
 } from 'typeorm';
 
-import { Role } from 'src/modules/auth/enum/role.enum';
-import { ProductEntity } from 'src/modules/products/entities/product.entity';
+import { Role } from '../../auth/enum/role.enum';
+import { ProductEntity } from '../../products/entities/product.entity';
 
 @Entity('users')
 export class UserEntity {

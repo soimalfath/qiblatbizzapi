@@ -5,7 +5,7 @@ import { ConfigType } from '@nestjs/config';
 import config from '../../../config/jwt.config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserEntity } from 'src/modules/users/entities/user.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 
 export type JwtPayload = {
   sub: string;

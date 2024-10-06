@@ -3,10 +3,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 import { UserService } from './users.service';
 import { Request, Response } from 'express';
-import { ResponseHelper } from 'src/utils/response.helper';
+import { ResponseHelper } from '../../utils/response.helper';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Role } from '../auth/enum/role.enum';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @Controller('user')
 export class UserController {

@@ -10,7 +10,7 @@ import {
 import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
 import { GoogleOauthGuard } from './guards/google-oauth.guard';
-import { ResponseHelper } from 'src/utils/response.helper';
+import { ResponseHelper } from '../../utils/response.helper';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-auth.guard';
 import { ConfigService } from '@nestjs/config';

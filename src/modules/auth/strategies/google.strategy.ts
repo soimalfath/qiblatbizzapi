@@ -6,6 +6,7 @@ import { Strategy, VerifyCallback } from 'passport-google-oauth2';
 import { Repository } from 'typeorm';
 import config from '../../../config/jwt.config';
 import { UserEntity } from 'src/modules/users/entities/user.entity';
+
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
@@ -22,19 +23,28 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
-    _accesToken: string,
+    _accessToken: string,
     _refreshToken: string,
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
     const { id, name, emails, photos } = profile;
-    const user = {
-      provider: 'google',
-      providerID: id,
-      email: emails[0].value,
-      name: `${name.givenName} ${name.familyName}`,
-      picture: photos[0].value,
-    };
+    let user = await this.userRepository.findOne({
+      where: { providerID: id, provider: 'google' },
+    });
+
+    if (!user) {
+      user = this.userRepository.create({
+        provider: 'google',
+        providerID: id,
+        email: emails[0].value,
+        name: `${name.givenName} ${name.familyName}`,
+        picture: photos[0].value,
+      });
+
+      await this.userRepository.save(user);
+    }
+
     done(null, user);
   }
 }

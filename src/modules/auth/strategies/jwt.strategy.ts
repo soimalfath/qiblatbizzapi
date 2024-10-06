@@ -10,6 +10,7 @@ import { UserEntity } from 'src/modules/users/entities/user.entity';
 export type JwtPayload = {
   sub: string;
   email: string;
+  role: number;
 };
 
 @Injectable()
@@ -19,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
   ) {
-    const extractJwtFromCookie = (req) => {
+    const extractJwtFromCookie = (req: any) => {
       let token = null;
       if (req && req.cookies) {
         token = req.cookies['access_token'];
@@ -38,12 +39,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const user = await this.userRepository.findOne({
       where: { email: payload.email },
     });
-
     if (!user) throw new UnauthorizedException('Please log in to continue');
 
     return {
       id: payload.sub,
       email: payload.email,
+      role: payload.role,
     };
   }
 }

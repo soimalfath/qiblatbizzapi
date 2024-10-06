@@ -1,5 +1,5 @@
-import { BaseUser } from './base-user.dto';
+import { CreateUserDto } from './base-user.dto';
 
-export class RegisterUserDto extends BaseUser {
+export class RegisterUserDto extends CreateUserDto {
   createdAt: Date;
 }

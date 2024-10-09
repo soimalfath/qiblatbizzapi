@@ -57,7 +57,6 @@ export class AiController {
       const data = await lastValueFrom(
         this.aiService.generateCopyWriting(prompting),
       );
-      console.log(data);
       return res.json(
         ResponseHelper.success('Success generate copywriting', data),
       );

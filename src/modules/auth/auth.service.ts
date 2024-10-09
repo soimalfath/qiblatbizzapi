@@ -96,7 +96,8 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-      return this.generateTokens(user);
+      const access_token = this.generateJwt(user);
+      return { access_token };
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }

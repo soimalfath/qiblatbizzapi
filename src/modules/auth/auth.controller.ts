@@ -52,16 +52,16 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   async refreshTokens(@Req() req: Request, @Res() res: Response) {
     try {
-      const { access_token, refresh_token } =
-        await this.authService.refreshTokens(req.cookies['refresh_token']);
-      this.setRefreshTokenCookie(res, refresh_token);
+      const { access_token } = await this.authService.refreshTokens(
+        req.cookies['refresh_token'],
+      );
 
       return res.json({ access_token });
     } catch (error) {
       console.error('Token refresh error:', error);
       return res
         .status(HttpStatus.UNAUTHORIZED)
-        .json(ResponseHelper.error('Unauthorized', 401));
+        .json(ResponseHelper.error(error.response.message, 401));
     }
   }
 
@@ -79,7 +79,7 @@ export class AuthController {
       httpOnly: true,
       secure: secure,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 3 * 24 * 60 * 60 * 1000,
       path: '/',
     });
   }

@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 export type JwtPayload = {
   sub: string;
   email: string;
+  role: number;
 };
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(

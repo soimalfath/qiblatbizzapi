@@ -13,5 +13,12 @@ export default registerAs(
     entities: [__dirname + '/../../entities/**/*.entity.{js,ts}'],
     synchronize: process.env.NODE_ENV !== 'production',
     autoLoadEntities: true,
+    // connectTimeout: 60000,
+    // logging: ['query', 'error'],
+    // extra: {
+    //   connectionLimit: 5,
+    // },
+    // retryAttempts: 10,
+    // retryDelay: 3000,
   }),
 );

@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { AxiosRequestConfig } from 'axios';
 import { ConfigService } from '@nestjs/config';
-import { Observable, map, tap } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { catchError, throwError } from 'rxjs';
 
 @Injectable()
@@ -39,7 +39,6 @@ export class AiService {
     const url = `${this.baseUrl}${this.modelAi}:generateContent?key=${this.apiKey}`;
     return this.httpService.post(url, data, { headers }).pipe(
       map((response) => response.data.candidates[0].content.parts[0]),
-      tap((data) => console.log('Generated content:', data)),
       catchError((error) => {
         console.error(
           'Error generating content:',

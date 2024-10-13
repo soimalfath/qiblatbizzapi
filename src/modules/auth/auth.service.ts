@@ -25,7 +25,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  generateJwt(payload: any) {
+  generateJwt(payload) {
     return this.accessTokenService.sign(payload);
   }
 
@@ -88,16 +88,13 @@ export class AuthService {
       const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
         secret: this.configService.get('config.refresh.secret'),
       });
-
       const user = await this.userRepository.findOne({
         where: { id: payload.sub },
       });
-
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-      const access_token = this.generateJwt(user);
-      return { access_token };
+      return this.generateTokens(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }

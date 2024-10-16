@@ -10,8 +10,14 @@ async function bootstrap() {
   const corsOptions: CorsOptions = {
     origin: process.env.FRONT_END_URL, // Mengizinkan asal ini
     credentials: true, // Jika menggunakan cookies atau header otentikasi
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'User-Agent',
+    ],
   };
   app.enableCors(corsOptions);
   app.useGlobalPipes(new ValidationPipe());

@@ -5,8 +5,11 @@ import {
   IsString,
   IsUUID,
   IsEnum,
+  MinLength,
+  IsStrongPassword,
 } from 'class-validator';
 import { Role } from '../../auth/enum/role.enum';
+import { Match } from '../../../common/decorators/confirmPassword.decorator';
 
 export class CreateUserDto {
   @IsEmail()
@@ -76,4 +79,40 @@ export class UserResponseDto {
 
   @IsEnum(Role)
   role: Role;
+}
+
+export class CreateUserManualUserDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3)
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @IsStrongPassword()
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Match('password', { message: 'Passwords do not match' })
+  confirmPassword: string;
+
+  @IsEnum(Role)
+  @IsNotEmpty()
+  role: number;
+}
+
+export class LoginDto {
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }

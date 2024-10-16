@@ -4,14 +4,21 @@ import {
   InternalServerErrorException,
   Inject,
   UnauthorizedException,
+  ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { generateFromEmail } from 'unique-username-generator';
 import { UserEntity } from '../users/entities/user.entity';
-import { RegisterUserDto } from '../users/dto/create-user.dto';
+import {
+  RegisterUserDto,
+  RegisterManualUserDto,
+} from '../users/dto/create-user.dto';
+import { LoginDto } from '../users/dto/base-user.dto';
 import { ConfigService } from '@nestjs/config';
+import bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +38,49 @@ export class AuthService {
 
   generateRefresh(payload) {
     return this.refreshTokenService.sign(payload);
+  }
+
+  async hashingPassword(password: string): Promise<string> {
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+    return await bcrypt.hash(password, salt);
+  }
+
+  async comparePassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  async registerManualUser(user: RegisterManualUserDto) {
+    const userExists = await this.findUserByEmail(user.email);
+    if (userExists) {
+      throw new ConflictException('Email already in use');
+    }
+    const newUser = this.userRepository.create(user);
+    newUser.name = user.username;
+    newUser.password = await this.hashingPassword(user.password);
+    await this.userRepository.save(newUser);
+  }
+
+  async login(
+    userLogin: LoginDto,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    const userExists = await this.findUserByEmail(userLogin.email);
+    if (!userExists) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isPasswordValid = await this.comparePassword(
+      userLogin.password,
+      userExists.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.generateTokens(userExists);
   }
 
   async signIn(user) {
@@ -84,20 +134,16 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string) {
-    try {
-      const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
-        secret: this.configService.get('config.refresh.secret'),
-      });
-      const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
-      });
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-      return this.generateTokens(user);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+    const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
+      secret: this.configService.get('config.refresh.secret'),
+    });
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
+    return this.generateTokens(user);
   }
 
   async validateRefreshToken(refreshToken: string) {

@@ -8,11 +8,10 @@ async function bootstrap() {
   console.log('NODE_ENV:', process.env.NODE_ENV);
   const app = await NestFactory.create(AppModule);
   const corsOptions: CorsOptions = {
-    origin: '*', // Mengizinkan asal ini
+    origin: process.env.FRONT_END_URL, // Mengizinkan asal ini
     credentials: true, // Jika menggunakan cookies atau header otentikasi
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    preflightContinue: false,
-    allowedHeaders: 'Content-Type, Authorization',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   };
   app.enableCors(corsOptions);
   app.useGlobalPipes(new ValidationPipe());

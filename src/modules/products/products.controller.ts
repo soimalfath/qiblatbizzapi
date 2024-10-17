@@ -9,6 +9,7 @@ import {
   Req,
   Res,
   HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -42,10 +43,16 @@ export class ProductsController {
           .status(HttpStatus.OK)
           .json(ResponseHelper.success('Succes add products', product));
       }
-    } catch (err) {
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(error.message, status));
+      }
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ResponseHelper.error('Failed get products', err.message));
+        .json(ResponseHelper.error('Failed get products', error.message));
     }
   }
 
@@ -60,7 +67,12 @@ export class ProductsController {
         .status(HttpStatus.OK)
         .json(ResponseHelper.success('Succes get products', products));
     } catch (err) {
-      console.error('Failed get products', err);
+      if (err instanceof HttpException) {
+        const status = err.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(err.message, status));
+      }
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .json(ResponseHelper.error('Failed get products', err.message));
@@ -81,11 +93,16 @@ export class ProductsController {
       return res
         .status(HttpStatus.OK)
         .json(ResponseHelper.success('Succes get products', product));
-    } catch (err) {
-      console.error('Failed get products', err);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(error.message, status));
+      }
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ResponseHelper.error('Failed get product', err.message));
+        .json(ResponseHelper.error('Failed get product', error.message));
     }
   }
 
@@ -113,11 +130,17 @@ export class ProductsController {
         }
         return;
       }
-    } catch (err) {
-      console.error('Failed get products', err);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(error.message, status));
+      }
+      console.error('Failed get products', error);
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ResponseHelper.error('Failed update product', err.message));
+        .json(ResponseHelper.error('Failed update product', error.message));
     }
   }
 
@@ -141,11 +164,16 @@ export class ProductsController {
         }
         return;
       }
-    } catch (err) {
-      console.error('Failed get products', err);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(error.message, status));
+      }
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ResponseHelper.error('Failed update product', err.message));
+        .json(ResponseHelper.error('Failed update product', error.message));
     }
   }
 }

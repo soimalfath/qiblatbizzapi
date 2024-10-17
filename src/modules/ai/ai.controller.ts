@@ -8,7 +8,7 @@ import {
   // Query,
   Res,
   Body,
-  HttpStatus,
+  HttpException,
   Req,
 } from '@nestjs/common';
 import { AiService } from './ai.service';
@@ -60,11 +60,12 @@ export class AiController {
       return res.json(
         ResponseHelper.success('Success generate copywriting', data),
       );
-    } catch (err) {
-      console.error(err);
-      return res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(ResponseHelper.error('Internal Server Error', 500));
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return ResponseHelper.error(error.message, status);
+      }
+      return ResponseHelper.error(error.response.message, 401);
     }
   }
 

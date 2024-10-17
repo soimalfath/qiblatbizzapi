@@ -24,11 +24,14 @@ export class UserEntity {
   @Column({ nullable: true })
   picture: string;
 
-  @Column()
+  @Column({ nullable: true })
   provider: string;
 
-  @Column()
+  @Column({ nullable: true })
   providerID: string;
+
+  @Column({ nullable: true })
+  password: string;
 
   @Column({ type: 'enum', enum: Role, default: Role.USER }) // Default role USER
   role: Role;

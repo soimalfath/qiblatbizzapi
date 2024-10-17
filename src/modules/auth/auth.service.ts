@@ -134,16 +134,20 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string) {
-    const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
-      secret: this.configService.get('config.refresh.secret'),
-    });
-    const user = await this.userRepository.findOne({
-      where: { id: payload.sub },
-    });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    try {
+      const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
+        secret: this.configService.get('config.refresh.secret'),
+      });
+      const user = await this.userRepository.findOne({
+        where: { id: payload.sub },
+      });
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      return this.generateTokens(user);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
     }
-    return this.generateTokens(user);
   }
 
   async validateRefreshToken(refreshToken: string) {

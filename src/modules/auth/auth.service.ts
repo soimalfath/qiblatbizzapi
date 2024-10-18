@@ -55,6 +55,27 @@ export class AuthService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  async sendVerificationEmail(user: UserEntity) {
+    const payload = { sub: user.id, email: user.email, role: [user.role] };
+    const token = this.generateJwt(payload);
+    const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;
+    await this.mailService.sendVerificationEmail(
+      user.email,
+      user.name,
+      confirmationUrl,
+    );
+  }
+
+  async verifEmail(token: string) {
+    const payload = await this.accessTokenService.verifyAsync(token, {
+      secret: this.configService.get('config.jwt.secret'),
+    });
+    const user = await this.findUserByEmail(payload.email);
+    if (!user) throw new UnauthorizedException('Invalid token');
+    user.isConfirmed = true;
+    this.userRepository.update(user.id, user);
+  }
+
   async registerManualUser(user: RegisterManualUserDto) {
     const userExists = await this.findUserByEmail(user.email);
     if (userExists) {
@@ -64,11 +85,7 @@ export class AuthService {
     newUser.name = user.username;
     newUser.password = await this.hashingPassword(user.password);
     await this.userRepository.save(newUser);
-    await this.mailService.sendVerificationEmail(
-      user.email,
-      newUser.name,
-      'https://qiblat.my.id',
-    );
+    await this.sendVerificationEmail(newUser);
   }
 
   async login(

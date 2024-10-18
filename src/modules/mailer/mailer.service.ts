@@ -8,7 +8,7 @@ export class MailService {
     to: string,
     username: string,
     confirmationLink: string,
-  ) {
+  ): Promise<boolean> {
     try {
       await this.mailService.sendMail({
         to,
@@ -19,9 +19,11 @@ export class MailService {
           confirmationLink,
         },
       });
+      console.log(`Verification email sent successfully to ${to}`);
+      return true;
     } catch (error) {
-      console.error('Error sending verification email:', error);
-      throw new Error('Failed to send verification email');
+      console.error(`Error sending verification email to ${to}:`, error);
+      throw new Error(`Failed to send verification email to ${to}`);
     }
   }
 }

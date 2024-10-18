@@ -3,10 +3,11 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailService } from './mailer.service';
+import path from 'path';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), // Ensure ConfigModule is imported to access env variables
+    ConfigModule, // Ensure ConfigModule is imported to access env variables
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -23,7 +24,13 @@ import { MailService } from './mailer.service';
           from: `"No Reply" <${configService.get<string>('MAIL_FROM')}>`,
         },
         template: {
-          dir: process.cwd() + '/src/modules/mailer/templates/', // Template directory
+          dir: path.join(
+            process.cwd(),
+            'src',
+            'modules',
+            'mailer',
+            'templates',
+          ),
           adapter: new HandlebarsAdapter(),
           options: {
             strict: true,

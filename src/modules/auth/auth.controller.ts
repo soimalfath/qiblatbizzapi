@@ -8,6 +8,7 @@ import {
   UseGuards,
   Body,
   HttpException,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
@@ -18,6 +19,8 @@ import { RefreshTokenGuard } from './guards/refresh-auth.guard';
 import { ConfigService } from '@nestjs/config';
 import { RegisterManualUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from '../users/dto/base-user.dto';
+import { ConfirmEmailDto } from './dto/confirm-email.dto';
+import { UserEntity } from '../users/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -85,6 +88,32 @@ export class AuthController {
         return ResponseHelper.error(error.message, status);
       }
       return ResponseHelper.error(error.response?.message, 401);
+    }
+  }
+
+  @Post('verif')
+  async verifEmail(@Body() confirmEmailDto: ConfirmEmailDto) {
+    try {
+      await this.authService.verifEmail(confirmEmailDto.token);
+      return ResponseHelper.success('succes verified email');
+    } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return ResponseHelper.error(error.message, status);
+      }
+      return ResponseHelper.error(error.response?.message, 401);
+    }
+  }
+
+  @Post('resend/verify')
+  async resendVerifEmail(@Req() req: Request): Promise<void> {
+    const user = req.user as UserEntity;
+    try {
+      await this.authService.sendVerificationEmail(user);
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Gagal mengirim email verifikasi',
+      );
     }
   }
 

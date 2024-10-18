@@ -30,6 +30,9 @@ export class UserEntity {
   @Column({ nullable: true })
   providerID: string;
 
+  @Column({ default: false })
+  isConfirmed: boolean;
+
   @Column({ nullable: true })
   password: string;
 

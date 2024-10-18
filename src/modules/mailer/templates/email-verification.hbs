@@ -1,0 +1,86 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Email Verifikasi - QiblatBiz</title>
+  <style type="text/css">
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .email-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #dddddd;
+      padding: 20px;
+    }
+    .email-header {
+      text-align: center;
+      padding-bottom: 20px;
+    }
+    .email-header img {
+      max-width: 100%;
+    }
+    .email-body {
+      font-size: 16px;
+      line-height: 1.5;
+      color: #333333;
+    }
+    .email-body p {
+      margin: 0 0 15px;
+    }
+    .email-footer {
+      font-size: 12px;
+      color: #999999;
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #dddddd;
+    }
+    .verify-button {
+      display: block;
+      width: 200px;
+      margin: 20px auto;
+      padding: 10px 0;
+      background-color: #f8bb3f;
+      color: #ffffff;
+      text-align: center;
+      text-decoration: none;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <table>
+    <tr>
+      <td>
+        <div class="email-container">
+          <div class="email-header">
+            <img src="https://file.api.akuari.my.id/file/LzYQa61WPVm0.png" alt="QiblatBiz Logo">
+          </div>
+          <div class="email-body">
+            <p>Halo  {{username}},</p>
+            <p>Terima kasih telah mendaftar di <strong>QiblatBiz</strong>! Harap verifikasi alamat email Anda untuk mengaktifkan akun Anda.</p>
+            <p>Klik tombol di bawah ini untuk memverifikasi email Anda:</p>
+            <a href="{{confirmationLink}}" class="verify-button">Verifikasi Email</a>
+            <p>Jika Anda tidak membuat akun di QiblatBiz, harap abaikan email ini.</p>
+          </div>
+          <div class="email-footer">
+            <p>© 2024 QiblatBiz. All rights reserved.</p>
+            <p>Alamat: Purbalingga, Jawa Tengah, Indonesia</p>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

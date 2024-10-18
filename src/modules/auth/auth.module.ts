@@ -12,11 +12,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import config from './../../config/jwt.config';
 import { DatabaseModule } from './../../database/database.module';
 import databaseConfig from './../../config/database.config';
+import { MailService } from '../mailer/mailer.service';
+import { MailModule } from '../mailer/mailer.module';
 
 @Module({
   imports: [
     DatabaseModule,
     PassportModule,
+    MailModule,
     TypeOrmModule.forFeature([UserEntity]),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -40,7 +43,7 @@ import databaseConfig from './../../config/database.config';
         },
       }),
       inject: [ConfigService],
-      global: false, // You may not want this globally available for all
+      global: true, // You may not want this globally available for all
     }),
   ],
   controllers: [AuthController],
@@ -49,6 +52,7 @@ import databaseConfig from './../../config/database.config';
     JwtStrategy,
     RefreshTokenStrategy,
     GoogleStrategy,
+    MailService,
     {
       provide: 'ACCESS_TOKEN_SERVICE',
       useExisting: JwtService,

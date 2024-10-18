@@ -1,10 +1,6 @@
 import {
   Controller,
-  Get,
   Post,
-  Patch,
-  Param,
-  Delete,
   // Query,
   Res,
   Body,
@@ -31,10 +27,6 @@ export class AiController {
     private readonly productService: ProductsService,
   ) {}
 
-  @Post()
-  create() {
-    return this.aiService.create();
-  }
   @Post('copywriting')
   @UseGuards(JwtAuthGuard)
   async generateCopyWriting(
@@ -67,25 +59,5 @@ export class AiController {
       }
       return ResponseHelper.error(error.response.message, 401);
     }
-  }
-
-  @Get()
-  findAll() {
-    return this.aiService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.aiService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string) {
-    return this.aiService.update(+id);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.aiService.remove(+id);
   }
 }

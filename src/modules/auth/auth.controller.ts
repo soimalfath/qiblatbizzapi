@@ -84,7 +84,7 @@ export class AuthController {
         const status = error.getStatus();
         return ResponseHelper.error(error.message, status);
       }
-      return ResponseHelper.error(error.response.message, 401);
+      return ResponseHelper.error(error.response?.message, 401);
     }
   }
 

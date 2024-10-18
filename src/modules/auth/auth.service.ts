@@ -19,6 +19,7 @@ import {
 import { LoginDto } from '../users/dto/base-user.dto';
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
+import { MailService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     private configService: ConfigService,
+    private mailService: MailService,
   ) {}
 
   generateJwt(payload) {
@@ -62,6 +64,11 @@ export class AuthService {
     newUser.name = user.username;
     newUser.password = await this.hashingPassword(user.password);
     await this.userRepository.save(newUser);
+    await this.mailService.sendVerificationEmail(
+      user.email,
+      newUser.name,
+      'https://qiblat.my.id',
+    );
   }
 
   async login(
@@ -145,26 +152,6 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
       return this.generateTokens(user);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-  }
-
-  async validateRefreshToken(refreshToken: string) {
-    try {
-      const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
-        secret: this.configService.get('config.refresh.secret'),
-      });
-
-      const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      return user;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }

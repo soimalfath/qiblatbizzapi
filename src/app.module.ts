@@ -7,9 +7,10 @@ import { ProductsModule } from './modules/products/products.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AiModule } from './modules/ai/ai.module';
+import { MailModule } from './modules/mailer/mailer.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, ProductsModule, AiModule],
+  imports: [AuthModule, UsersModule, ProductsModule, AiModule, MailModule],
   controllers: [AppController],
   providers: [
     AppService,

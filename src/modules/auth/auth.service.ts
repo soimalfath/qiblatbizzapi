@@ -57,8 +57,7 @@ export class AuthService {
   }
 
   async sendVerificationEmail(user: UserEntity) {
-    if (user.isConfirmed)
-      throw new BadRequestException('Email already verified');
+    if (user.isConfirmed) throw new ConflictException('Email already verified');
     const payload = { sub: user.id, email: user.email, role: [user.role] };
     const token = this.generateJwt(payload);
     const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;

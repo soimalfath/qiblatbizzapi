@@ -36,7 +36,7 @@ This is a **NestJS** project that implements authentication using both **Google 
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/your-repo/qiblatbizzapi.git
+   git clone https://github.com/soimalfath/qiblatbizzapi.git
    cd qiblatbizzapi
    ```
 

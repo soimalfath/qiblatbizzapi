@@ -1,6 +1,11 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import config from '../../../config/jwt.config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -40,6 +45,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       where: { email: payload.email },
     });
     if (!user) throw new UnauthorizedException('Please log in to continue');
+    if (!user.isConfirmed)
+      throw new ForbiddenException('Please verify your email to continue');
 
     return {
       id: payload.sub,

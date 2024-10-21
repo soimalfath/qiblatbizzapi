@@ -48,6 +48,12 @@ export class AuthController {
         `${callbackURL}/auth/callback?access_token=${access_token}`,
       );
     } catch (error) {
+      if (error instanceof HttpException) {
+        const status = error.getStatus();
+        return res
+          .status(status)
+          .json(ResponseHelper.error(error.message, status));
+      }
       console.error('Google auth callback error:', error);
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -91,10 +97,10 @@ export class AuthController {
     }
   }
 
-  @Post('verif')
+  @Post('verify')
   async verifEmail(@Body() confirmEmailDto: ConfirmEmailDto) {
     try {
-      await this.authService.verifEmail(confirmEmailDto.token);
+      await this.authService.verifyEmail(confirmEmailDto.token);
       return ResponseHelper.success('succes verified email');
     } catch (error) {
       if (error instanceof HttpException) {

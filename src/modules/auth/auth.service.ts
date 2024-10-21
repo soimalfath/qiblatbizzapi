@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -56,6 +57,8 @@ export class AuthService {
   }
 
   async sendVerificationEmail(user: UserEntity) {
+    if (user.isConfirmed)
+      throw new BadRequestException('Email already verified');
     const payload = { sub: user.id, email: user.email, role: [user.role] };
     const token = this.generateJwt(payload);
     const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;
@@ -66,21 +69,27 @@ export class AuthService {
     );
   }
 
-  async verifEmail(token: string) {
-    const payload = await this.accessTokenService.verifyAsync(token, {
-      secret: this.configService.get('config.jwt.secret'),
-    });
-    const user = await this.findUserByEmail(payload.email);
-    if (!user) throw new UnauthorizedException('Invalid token');
-    user.isConfirmed = true;
-    this.userRepository.update(user.id, user);
+  async verifyEmail(token: string) {
+    try {
+      const payload = await this.accessTokenService.verifyAsync(token, {
+        secret: this.configService.get('config.jwt.secret'),
+      });
+
+      const user = await this.findUserByEmail(payload.email);
+      if (!user) throw new UnauthorizedException('Invalid token');
+
+      user.isConfirmed = true;
+      await this.userRepository.update(user.id, { isConfirmed: true });
+
+      return { message: 'Email verified successfully' };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 
   async registerManualUser(user: RegisterManualUserDto) {
     const userExists = await this.findUserByEmail(user.email);
-    if (userExists) {
-      throw new ConflictException('Email already in use');
-    }
+    if (userExists) throw new ConflictException('Email already in use');
     const newUser = this.userRepository.create(user);
     newUser.name = user.username;
     newUser.password = await this.hashingPassword(user.password);
@@ -95,6 +104,8 @@ export class AuthService {
     if (!userExists) {
       throw new NotFoundException('User not found');
     }
+    if (!userExists.isConfirmed)
+      throw new ForbiddenException('Please verify your email to continue');
 
     const isPasswordValid = await this.comparePassword(
       userLogin.password,
@@ -113,6 +124,10 @@ export class AuthService {
     }
     const userExists = await this.findUserByEmail(user.email);
 
+    if (userExists.password) {
+      throw new UnauthorizedException('please login using password');
+    }
+
     if (!userExists) {
       return this.registerUser(user);
     }
@@ -124,6 +139,7 @@ export class AuthService {
     try {
       const newUser = this.userRepository.create(user);
       newUser.name = generateFromEmail(user.email, 5);
+      newUser.isConfirmed = true;
       await this.userRepository.save(newUser);
 
       return this.generateTokens(newUser);

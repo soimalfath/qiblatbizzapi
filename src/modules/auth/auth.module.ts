@@ -43,7 +43,7 @@ import { MailModule } from '../mailer/mailer.module';
         },
       }),
       inject: [ConfigService],
-      global: true, // You may not want this globally available for all
+      global: true,
     }),
   ],
   controllers: [AuthController],
@@ -71,6 +71,6 @@ import { MailModule } from '../mailer/mailer.module';
       inject: [ConfigService],
     },
   ],
-  exports: [AuthService, DatabaseModule], // Export AuthService jika diperlukan di modul lain
+  exports: [AuthService, DatabaseModule],
 })
 export class AuthModule {}

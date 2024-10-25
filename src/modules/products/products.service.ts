@@ -48,10 +48,8 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    // Assign data baru ke entitas yang sudah ada
     Object.assign(product, updateProductDto);
 
-    // Simpan perubahan
     return this.productRepository.save(product);
   }
 

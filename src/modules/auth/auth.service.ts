@@ -21,6 +21,7 @@ import { LoginDto } from '../users/dto/base-user.dto';
 import { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import { MailService } from '../mailer/mailer.service';
+import { ConfirmResetPasswordDto } from './dto/forgot-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +34,7 @@ export class AuthService {
     private userRepository: Repository<UserEntity>,
     private configService: ConfigService,
     private mailService: MailService,
+    private tokenService: JwtService,
   ) {}
 
   generateJwt(payload) {
@@ -58,10 +60,15 @@ export class AuthService {
 
   async sendVerificationEmail(user: UserEntity) {
     if (user.isConfirmed) throw new ConflictException('Email already verified');
-    const payload = { sub: user.id, email: user.email, role: [user.role] };
-    const token = this.generateJwt(payload);
+    const payload = { email: user.email };
+    const token = this.tokenService.sign(payload, {
+      expiresIn: '1d',
+      secret: '.wi7nd.[-',
+    });
+    const type = 'emailVerification';
     const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;
-    await this.mailService.sendVerificationEmail(
+    await this.mailService.sendEmail(
+      type,
       user.email,
       user.name,
       confirmationUrl,
@@ -71,7 +78,7 @@ export class AuthService {
   async verifyEmail(token: string) {
     try {
       const payload = await this.accessTokenService.verifyAsync(token, {
-        secret: this.configService.get('config.jwt.secret'),
+        secret: '.wi7nd.[-',
       });
 
       const user = await this.findUserByEmail(payload.email);
@@ -187,5 +194,55 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+  async senEmailForgotPassword(email: string) {
+    const userExists = await this.findUserByEmail(email);
+    if (!userExists) {
+      throw new UnauthorizedException(
+        'If your email exists, you will receive instructions',
+      );
+    }
+
+    const payload = {
+      email: userExists.email,
+    };
+    const type = 'forgotPassword';
+    const token = this.tokenService.sign(payload, {
+      expiresIn: '6h',
+      secret: '737hgh.',
+    });
+    const username = userExists.name;
+    const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/reset-password?code=${token}`;
+    await this.mailService.sendEmail(type, email, username, confirmationUrl);
+  }
+
+  async verifyResetPassword(
+    resetPassword: ConfirmResetPasswordDto,
+  ): Promise<{ message: string }> {
+    const payload = await this.tokenService.verifyAsync(resetPassword.token, {
+      secret: '737hgh.',
+    });
+    if (!payload) throw new UnauthorizedException('Invalid token');
+    const userExists = await this.findUserByEmail(payload.email);
+    if (!userExists) throw new UnauthorizedException('User not found');
+    const isSameWithOldPassword = await this.comparePassword(
+      resetPassword.password,
+      userExists.password,
+    );
+    if (isSameWithOldPassword)
+      throw new ForbiddenException(
+        'New password cannot be the same as the old password',
+      );
+    const newPassword = await this.hashingPassword(resetPassword.password);
+    await this.userRepository.update(userExists.id, { password: newPassword });
+    const urlLogin = `${this.configService.get<string>('FRONT_END_URL')}/auth/signin`;
+    const type = 'passwordResetConfirmation';
+    await this.mailService.sendEmail(
+      type,
+      userExists.email,
+      userExists.name,
+      urlLogin,
+    );
+    return { message: 'reset Password verified successfully' };
   }
 }

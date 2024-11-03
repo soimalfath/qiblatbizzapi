@@ -15,12 +15,12 @@ export class UserService {
     return await this.userRepository.findOne({ where: { id } });
   }
 
-  async updateUserProfile(email: string, user: UpdateUserDto) {
-    const userExists = this.userRepository.findOne({ where: { email } });
+  async updateUserProfile(email: string, updatedata: UpdateUserDto) {
+    const userExists = await this.userRepository.findOne({ where: { email } });
     if (!userExists) throw new NotFoundException('User not found');
 
-    Object.assign(userExists, user);
-    return this.userRepository.save(user);
+    Object.assign(userExists, updatedata);
+    return this.userRepository.save(userExists);
   }
 
   async getAllUser() {

@@ -7,7 +7,7 @@ import path from 'path';
 
 @Module({
   imports: [
-    ConfigModule, // Ensure ConfigModule is imported to access env variables
+    ConfigModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

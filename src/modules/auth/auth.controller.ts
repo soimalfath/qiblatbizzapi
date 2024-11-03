@@ -21,6 +21,10 @@ import { RegisterManualUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from '../users/dto/base-user.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { UserEntity } from '../users/entities/user.entity';
+import {
+  ResetPasswordDto,
+  ConfirmResetPasswordDto,
+} from './dto/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -97,7 +101,7 @@ export class AuthController {
     }
   }
 
-  @Post('verify')
+  @Post('verify/email')
   async verifEmail(@Body() confirmEmailDto: ConfirmEmailDto) {
     try {
       await this.authService.verifyEmail(confirmEmailDto.token);
@@ -111,10 +115,10 @@ export class AuthController {
     }
   }
 
-  @Post('resend/verify')
-  async resendVerifEmail(@Req() req: Request): Promise<void> {
-    const user = req.user as UserEntity;
+  @Post('request/verify')
+  async requestVerifEmail(@Req() req: Request): Promise<void> {
     try {
+      const user = req.user as UserEntity;
       await this.authService.sendVerificationEmail(user);
     } catch (error) {
       throw new BadRequestException(
@@ -153,6 +157,30 @@ export class AuthController {
   async logout(@Res() res: Response) {
     this.clearRefreshTokenCookie(res);
     return res.json(ResponseHelper.success('Logged out successfully'));
+  }
+
+  @Post('request/reset-password')
+  async requestForgotPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    try {
+      await this.authService.senEmailForgotPassword(resetPasswordDto.email);
+      return ResponseHelper.success('Request reset password successfully');
+    } catch (error) {
+      const status = error.getStatus();
+      return ResponseHelper.error(error.message, status);
+    }
+  }
+
+  @Post('verify/reset-password')
+  async verifyResetPassowrd(
+    @Body() confirmResetPasswordDto: ConfirmResetPasswordDto,
+  ) {
+    try {
+      await this.authService.verifyResetPassword(confirmResetPasswordDto);
+      return ResponseHelper.success('reset password successfully');
+    } catch (error) {
+      const status = error.getStatus();
+      return ResponseHelper.error(error.message, status);
+    }
   }
 
   private setRefreshTokenCookie(res: Response, refresh_token: string) {

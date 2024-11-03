@@ -162,7 +162,7 @@ export class AuthController {
   @Post('request/reset-password')
   async requestForgotPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     try {
-      await this.authService.senEmailForgotPassword(resetPasswordDto.email);
+      await this.authService.sendEmailForgotPassword(resetPasswordDto.email);
       return ResponseHelper.success('Request reset password successfully');
     } catch (error) {
       const status = error.getStatus();
@@ -179,6 +179,7 @@ export class AuthController {
       return ResponseHelper.success('reset password successfully');
     } catch (error) {
       const status = error.getStatus();
+      console.log(error.message);
       return ResponseHelper.error(error.message, status);
     }
   }

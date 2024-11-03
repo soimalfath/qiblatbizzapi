@@ -13,6 +13,8 @@ export default registerAs(
     entities: [__dirname + '/../../entities/**/*.entity.{js,ts}'],
     synchronize: process.env.NODE_ENV !== 'production',
     autoLoadEntities: true,
+    migrations: ['dist/migrations/*{.ts,.js}'],
     // migrationsRun: true,
+    // npm run migration:generate src/migrations/AddPhoneAndIsActive
   }),
 );

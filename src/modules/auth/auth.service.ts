@@ -55,7 +55,7 @@ export class AuthService {
     plainPassword: string,
     hashedPassword: string,
   ): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
+    return await bcrypt.compare(plainPassword, hashedPassword);
   }
 
   async sendVerificationEmail(user: UserEntity) {
@@ -195,7 +195,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
-  async senEmailForgotPassword(email: string) {
+  async sendEmailForgotPassword(email: string) {
     const userExists = await this.findUserByEmail(email);
     if (!userExists) {
       throw new UnauthorizedException(
@@ -216,10 +216,8 @@ export class AuthService {
     await this.mailService.sendEmail(type, email, username, confirmationUrl);
   }
 
-  async verifyResetPassword(
-    resetPassword: ConfirmResetPasswordDto,
-  ): Promise<{ message: string }> {
-    const payload = await this.tokenService.verifyAsync(resetPassword.token, {
+  async verifyResetPassword(resetPassword: ConfirmResetPasswordDto) {
+    const payload = await this.tokenService.verify(resetPassword.token, {
       secret: '737hgh.',
     });
     if (!payload) throw new UnauthorizedException('Invalid token');
@@ -243,6 +241,5 @@ export class AuthService {
       userExists.name,
       urlLogin,
     );
-    return { message: 'reset Password verified successfully' };
   }
 }

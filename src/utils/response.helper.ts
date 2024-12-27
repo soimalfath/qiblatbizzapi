@@ -31,7 +31,6 @@ export class ResponseHelper {
           status: 'error',
           statusText: statusText,
         },
-        data: null,
       },
       code,
     );

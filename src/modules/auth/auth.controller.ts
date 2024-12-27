@@ -14,7 +14,6 @@ import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
 import { GoogleOauthGuard } from './guards/google-oauth.guard';
 import { ResponseHelper } from '../../utils/response.helper';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RefreshTokenGuard } from './guards/refresh-auth.guard';
 import { ConfigService } from '@nestjs/config';
 import { RegisterManualUserDto } from '../users/dto/create-user.dto';
@@ -46,11 +45,7 @@ export class AuthController {
       );
 
       this.setRefreshTokenCookie(res, refresh_token);
-
-      const callbackURL = this.configService.get('FRONT_END_URL');
-      return res.redirect(
-        `${callbackURL}/auth/callback?access_token=${access_token}`,
-      );
+      this.setAccessTokenCookie(res, access_token);
     } catch (error) {
       if (error instanceof HttpException) {
         const status = error.getStatus();
@@ -72,7 +67,7 @@ export class AuthController {
       const { access_token } = await this.authService.refreshTokens(
         req.cookies['refresh_token'],
       );
-
+      this.setAccessTokenCookie(res, access_token);
       return res.json({ access_token });
     } catch (error) {
       if (error instanceof HttpException) {
@@ -133,11 +128,12 @@ export class AuthController {
       const { access_token, refresh_token } =
         await this.authService.login(userLogin);
       this.setRefreshTokenCookie(res, refresh_token);
-      const data = { access_token };
+      this.setAccessTokenCookie(res, access_token);
       return res
         .status(HttpStatus.OK)
-        .json(ResponseHelper.success('Login Success', data));
+        .json(ResponseHelper.success('Login Success'));
     } catch (error) {
+      console.log(error);
       if (error instanceof HttpException) {
         const status = error.getStatus();
         return res
@@ -153,9 +149,10 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RefreshTokenGuard)
   async logout(@Res() res: Response) {
     this.clearRefreshTokenCookie(res);
+    this.clearAccessTokenCookie(res);
     return res.json(ResponseHelper.success('Logged out successfully'));
   }
 
@@ -184,6 +181,18 @@ export class AuthController {
     }
   }
 
+  private setAccessTokenCookie(res: Response, access_token: string) {
+    const secure = process.env.NODE_ENV === 'production';
+
+    res.cookie('access_token', access_token, {
+      httpOnly: true,
+      secure: secure,
+      sameSite: 'lax',
+      maxAge: 1 * 60 * 60 * 1000, // 1 hour
+      path: '/',
+    });
+  }
+
   private setRefreshTokenCookie(res: Response, refresh_token: string) {
     const secure = process.env.NODE_ENV === 'production';
 
@@ -198,6 +207,14 @@ export class AuthController {
 
   private clearRefreshTokenCookie(res: Response) {
     res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+  }
+  private clearAccessTokenCookie(res: Response) {
+    res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

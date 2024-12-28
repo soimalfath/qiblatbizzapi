@@ -187,6 +187,7 @@ export class AuthController {
     res.cookie('access_token', access_token, {
       httpOnly: true,
       secure: secure,
+      domain: secure ? '.qiblat.my.id' : '',
       sameSite: 'lax',
       maxAge: 1 * 60 * 60 * 1000, // 1 hour
       path: '/',
@@ -200,24 +201,29 @@ export class AuthController {
       httpOnly: true,
       secure: secure,
       sameSite: 'lax',
+      domain: secure ? '.qiblat.my.id' : '',
       maxAge: 3 * 24 * 60 * 60 * 1000,
       path: '/',
     });
   }
 
   private clearRefreshTokenCookie(res: Response) {
+    const secure = process.env.NODE_ENV === 'production';
     res.clearCookie('refresh_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      domain: secure ? '.qiblat.my.id' : '',
       path: '/',
     });
   }
   private clearAccessTokenCookie(res: Response) {
+    const secure = process.env.NODE_ENV === 'production';
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      domain: secure ? '.qiblat.my.id' : '',
       path: '/',
     });
   }

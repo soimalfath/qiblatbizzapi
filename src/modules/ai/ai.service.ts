@@ -146,13 +146,13 @@ PENTING: Kembalikan respons HANYA sebagai objek JSON yang valid tanpa teks tamba
     "intro": "String (perkenalan topik + preview isi video)",
     "mainPoints": [
       {
-        "title": "Judul Poin 1",
-        "content": "Penjelasan detail atau narasi poin 1"
+        // "title": "Judul",
+        "content": "script utama"
       },
-      {
-        "title": "Judul Poin 2",
-        "content": "Penjelasan detail atau narasi poin 2"
-      }
+      // {
+      //   "title": "Judul Poin 2",
+      //   "content": "Penjelasan detail atau narasi poin 2"
+      // }
       // Tambah sesuai kebutuhan
     ],
     "conclusion": "String (kesimpulan akhir + rekap)",

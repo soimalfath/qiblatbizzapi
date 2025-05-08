@@ -3,3 +3,4 @@
 3.Patuhi Rules code yang sudah ada
 4.Selalu sertakan ts dokumentasi
 5.Gunakan metode clean code
+6.gunakan methode yang mengutamakan kecepatan performa tapi hemat resource

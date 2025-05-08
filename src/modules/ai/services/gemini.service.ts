@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common'; // Tambahkan Inject
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
+// import { ConfigService } from '@nestjs/config'; // Hapus jika tidak digunakan lagi
+import { ConfigType } from '@nestjs/config'; // Tambahkan ConfigType
+import geminiConfiguration from '../../../config/gemini.config'; // Impor konfigurasi gemini
 import { map, catchError, firstValueFrom } from 'rxjs';
 import { AxiosRequestConfig } from 'axios';
 import {
@@ -12,17 +14,19 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 @Injectable()
 export class GeminiService implements IAiProvider {
   private readonly logger = new Logger(GeminiService.name);
-  private readonly api_key: string; // Naming convention: snake_case
-  private readonly base_url: string; // Naming convention: snake_case
-  private readonly model_ai: string; // Naming convention: snake_case
+  private readonly api_key: string;
+  private readonly base_url: string;
+  private readonly model_ai: string;
 
   constructor(
-    private readonly http_service: HttpService, // Naming convention: snake_case
-    private readonly config_service: ConfigService, // Naming convention: snake_case
+    private readonly http_service: HttpService,
+    // private readonly config_service: ConfigService, // Hapus ini
+    @Inject(geminiConfiguration.KEY)
+    private readonly gem_config: ConfigType<typeof geminiConfiguration>, // Suntikkan geminiConfig
   ) {
-    this.base_url = this.config_service.get('GEMINI_BASE_URL');
-    this.api_key = this.config_service.get('GEMINI_APIKEY');
-    this.model_ai = this.config_service.get('GEMINI_MODEL_NAME');
+    this.base_url = this.gem_config.base_url; // Gunakan dari gem_config
+    this.api_key = this.gem_config.api_key; // Gunakan dari gem_config
+    this.model_ai = this.gem_config.model_ai; // Gunakan dari gem_config
   }
 
   /**

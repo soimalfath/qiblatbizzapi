@@ -11,7 +11,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import config from './../../config/jwt.config';
 import { DatabaseModule } from './../../database/database.module';
-import databaseConfig from './../../config/database.config';
+// import databaseConfig from './../../config/database.config';
 import { MailService } from '../mailer/mailer.service';
 import { MailModule } from '../mailer/mailer.module';
 
@@ -21,10 +21,10 @@ import { MailModule } from '../mailer/mailer.module';
     PassportModule,
     MailModule,
     TypeOrmModule.forFeature([UserEntity]),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [databaseConfig],
-    }),
+    // ConfigModule.forRoot({
+    //   isGlobal: true,
+    //   load: [databaseConfig],
+    // }),
     ConfigModule.forFeature(config),
     JwtModule.registerAsync({
       imports: [ConfigModule],

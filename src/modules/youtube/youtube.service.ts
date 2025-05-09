@@ -18,8 +18,17 @@ import {
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchVideoItemDto } from './dto/search-video-item.dto';
 import { SearchVideosResponseDto } from './dto/search-videos-response.dto';
-import { AxiosError } from 'axios';
+import { GetVideoCategoriesDto } from './dto/get-video-categories.dto';
+import {
+  VideoCategoriesResponseDto,
+  // VideoCategoryItemDto, // This was imported but not used in the first class definition
+} from './dto/video-category.dto';
+import { AxiosError } from 'axios'; // Import AxiosError
 import * as moment from 'moment';
+import {
+  ChannelDetailsDto,
+  ChannelListResponseDto,
+} from './dto/channel-details.dto'; // <-- Tambahkan impor ini
 
 /**
  * Service untuk mengelola operasi terkait YouTube API.
@@ -60,16 +69,23 @@ export class YoutubeService {
       hl = 'id',
     } = dto;
 
-    const params = {
+    const params: Record<string, any> = {
+      // Added Record<string, any> for better type safety
       part: 'snippet,contentDetails,statistics',
       chart: 'mostPopular',
-      regionCode,
-      videoCategoryId,
       maxResults,
       pageToken,
       hl,
       key: this._apiKey,
     };
+
+    // Conditionally add parameters to avoid sending undefined values
+    if (regionCode) {
+      params.regionCode = regionCode;
+    }
+    if (videoCategoryId) {
+      params.videoCategoryId = videoCategoryId;
+    }
 
     const url = `${this._baseUrl}/videos`;
 
@@ -116,7 +132,8 @@ export class YoutubeService {
       type = 'video',
     } = dto;
 
-    const searchParams: any = {
+    const searchParams: Record<string, any> = {
+      // Added Record<string, any>
       part: 'snippet',
       q,
       order,
@@ -138,6 +155,9 @@ export class YoutubeService {
     const searchUrl = `${this._baseUrl}/search`;
 
     try {
+      this._logger.log(
+        `Melakukan pencarian video di YouTube API. URL: ${searchUrl}, Params: ${JSON.stringify({ ...searchParams, key: 'REDACTED_API_KEY' })}`,
+      );
       const searchResponse = await firstValueFrom(
         this._httpService.get(searchUrl, { params: searchParams }),
       );
@@ -154,9 +174,12 @@ export class YoutubeService {
           part: 'snippet,contentDetails,statistics',
           id: videoIds.join(','),
           key: this._apiKey,
-          hl,
+          hl, // Assuming hl from search should be used for details too
         };
         const detailsUrl = `${this._baseUrl}/videos`;
+        this._logger.log(
+          `Mengambil detail untuk video hasil pencarian. URL: ${detailsUrl}, Params: ${JSON.stringify({ ...detailsParams, key: 'REDACTED_API_KEY' })}`,
+        );
         const detailsResponse = await firstValueFrom(
           this._httpService.get(detailsUrl, { params: detailsParams }),
         );
@@ -177,7 +200,7 @@ export class YoutubeService {
       return {
         items,
         next_page_token: searchData.nextPageToken,
-        region_code: searchData.regionCode,
+        region_code: searchData.regionCode, // This comes from search API response
         page_info: {
           total_results: searchData.pageInfo.totalResults,
           results_per_page: searchData.pageInfo.resultsPerPage,
@@ -191,15 +214,19 @@ export class YoutubeService {
   /**
    * Mengambil detail video spesifik dari YouTube berdasarkan ID.
    * @param videoId ID video YouTube.
+   * @param hl Bahasa untuk respons (opsional, default 'id').
    * @returns Promise berisi detail video.
    * @throws HttpException jika video tidak ditemukan atau terjadi error API.
    */
-  async getVideoDetails(videoId: string): Promise<TrendingVideoItemDto> {
+  async getVideoDetails(
+    videoId: string,
+    hl: string = 'id',
+  ): Promise<TrendingVideoItemDto> {
     const params = {
       part: 'snippet,contentDetails,statistics',
       id: videoId,
       key: this._apiKey,
-      hl: 'id',
+      hl,
     };
 
     const url = `${this._baseUrl}/videos`;
@@ -222,9 +249,80 @@ export class YoutubeService {
       return this._transformVideoItem(videoItem);
     } catch (error) {
       if (error instanceof HttpException) {
-        throw error;
+        throw error; // Re-throw if already an HttpException
       }
       this._handleApiError(error, `mengambil detail video ID ${videoId}`);
+    }
+  }
+
+  /**
+   * @method getVideoCategories
+   * @description Retrieves a list of video categories for a specified region.
+   * @param {GetVideoCategoriesDto} params - The parameters for fetching video categories, including regionCode and optional language.
+   * @returns {Promise<VideoCategoriesResponseDto>} A promise that resolves to the list of video categories.
+   * @throws {HttpException} If the API request fails or returns an error.
+   */
+  async getVideoCategories(
+    paramsDto: GetVideoCategoriesDto, // Renamed to avoid conflict with 'params' variable
+  ): Promise<VideoCategoriesResponseDto> {
+    const { regionCode, hl } = paramsDto;
+    const url = `${this._baseUrl}/videoCategories`;
+    const queryParams = {
+      // Renamed to avoid conflict
+      part: 'snippet',
+      regionCode: regionCode,
+      key: this._apiKey,
+      hl: hl || 'en_US', // Default to English if not specified
+    };
+
+    this._logger.log(
+      `Fetching video categories for region: ${regionCode}, language: ${queryParams.hl}. URL: ${url}, Params: ${JSON.stringify({ ...queryParams, key: 'REDACTED_API_KEY' })}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this._httpService.get<VideoCategoriesResponseDto>(url, {
+          params: queryParams,
+        }),
+      );
+      this._logger.log(
+        `Successfully fetched ${response.data.items.length} video categories.`,
+      );
+      return response.data; // Directly return data as HttpService already maps it
+    } catch (error) {
+      // Error handling should be consistent with _handleApiError
+      const axiosError = error as AxiosError;
+      if (axiosError.response) {
+        const errorData = axiosError.response.data as any;
+        const apiErrorMessage =
+          errorData?.error?.message ||
+          'Error tidak diketahui dari YouTube API saat mengambil kategori video.';
+        const errorStatus =
+          axiosError.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
+        this._logger.error(
+          `Error dari YouTube API saat mengambil kategori video (Status: ${errorStatus}): ${apiErrorMessage}`,
+          JSON.stringify(errorData.error?.errors),
+        );
+        throw new HttpException(apiErrorMessage, errorStatus);
+      } else if (axiosError.request) {
+        this._logger.error(
+          `Tidak ada respons dari YouTube API saat mengambil kategori video:`,
+          axiosError.message,
+        );
+        throw new HttpException(
+          'Tidak ada respons dari layanan YouTube.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      } else {
+        this._logger.error(
+          `Error saat menyiapkan permintaan ke YouTube API untuk mengambil kategori video:`,
+          axiosError.message,
+        );
+        throw new HttpException(
+          `Gagal menghubungi layanan YouTube: ${axiosError.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
     }
   }
 
@@ -237,14 +335,19 @@ export class YoutubeService {
   private _transformVideoItem(item: any): TrendingVideoItemDto {
     const viewCount = parseInt(item.statistics?.viewCount || '0', 10);
     const publishedAtString = item.snippet?.publishedAt;
-    const publishedAtMoment = moment.utc(publishedAtString);
+    const publishedAtMoment = publishedAtString
+      ? moment.utc(publishedAtString)
+      : null; // Handle null publishedAtString
 
     const hoursSincePublished =
-      publishedAtString && publishedAtMoment.isValid()
+      publishedAtMoment && publishedAtMoment.isValid() // Check if publishedAtMoment is not null
         ? moment.utc().diff(publishedAtMoment, 'hours', true)
         : 0;
 
-    const vph = hoursSincePublished > 0 ? viewCount / hoursSincePublished : 0;
+    const vph =
+      viewCount && hoursSincePublished > 0
+        ? viewCount / hoursSincePublished
+        : 0; // Check viewCount
     const likeCountRaw = item.statistics?.likeCount;
 
     return {
@@ -269,7 +372,7 @@ export class YoutubeService {
         : null,
       formatted_vph: `${this._formatNumber(vph)}/hr`,
       time_since_upload:
-        publishedAtString && publishedAtMoment.isValid()
+        publishedAtMoment && publishedAtMoment.isValid() // Check if publishedAtMoment is not null
           ? publishedAtMoment.fromNow()
           : 'N/A',
       formatted_duration: this._formatYtDuration(item.contentDetails?.duration),
@@ -283,7 +386,9 @@ export class YoutubeService {
    * @returns String angka yang telah diformat.
    * @private
    */
-  private _formatNumber(num: number): string {
+  private _formatNumber(num: number | null): string {
+    // Allow null for num
+    if (num === null || num === undefined) return 'N/A'; // Handle null or undefined
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
     }
@@ -301,20 +406,28 @@ export class YoutubeService {
    */
   private _formatYtDuration(durationString?: string): string {
     if (!durationString) return 'N/A';
-    const duration = moment.duration(durationString);
-    const hours = Math.floor(duration.asHours());
-    const minutes = duration.minutes();
-    const seconds = duration.seconds();
+    try {
+      const duration = moment.duration(durationString);
+      const hours = Math.floor(duration.asHours());
+      const minutes = duration.minutes();
+      const seconds = duration.seconds();
 
-    let formatted = '';
-    if (hours > 0) {
-      formatted += `${hours}:`;
-      formatted += `${minutes.toString().padStart(2, '0')}:`;
-    } else {
-      formatted += `${minutes}:`;
+      let formatted = '';
+      if (hours > 0) {
+        formatted += `${hours}:`;
+        formatted += `${minutes.toString().padStart(2, '0')}:`;
+        formatted += seconds.toString().padStart(2, '0');
+      } else if (minutes > 0) {
+        formatted += `${minutes}:`;
+        formatted += seconds.toString().padStart(2, '0');
+      } else {
+        formatted += `0:${seconds.toString().padStart(2, '0')}`;
+      }
+      return formatted;
+    } catch (e) {
+      this._logger.warn(`Could not parse duration string: ${durationString}`);
+      return 'N/A';
     }
-    formatted += seconds.toString().padStart(2, '0');
-    return formatted;
   }
 
   /**
@@ -322,39 +435,32 @@ export class YoutubeService {
    * @param error Objek error.
    * @param action Deskripsi aksi yang gagal.
    * @private
+   * @throws HttpException
    */
   private _handleApiError(error: any, action: string): never {
     const axiosError = error as AxiosError;
+    let message = `Gagal ${action}.`;
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+
     if (axiosError.response) {
       const errorData = axiosError.response.data as any;
-      const apiErrorMessage =
-        errorData?.error?.message || 'Error tidak diketahui dari YouTube API.';
-      const errorStatus =
-        axiosError.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
+      message =
+        errorData?.error?.message ||
+        `Error tidak diketahui dari YouTube API saat ${action}.`;
+      status = axiosError.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
       this._logger.error(
-        `Error dari YouTube API saat ${action} (Status: ${errorStatus}): ${apiErrorMessage}`,
-        JSON.stringify(errorData.error?.errors),
+        `Error dari YouTube API saat ${action} (Status: ${status}): ${message}`,
+        JSON.stringify(errorData?.error?.errors), // Log specific errors if available
       );
-      throw new HttpException(apiErrorMessage, errorStatus);
     } else if (axiosError.request) {
-      this._logger.error(
-        `Tidak ada respons dari YouTube API saat ${action}:`,
-        axiosError.message,
-      );
-      throw new HttpException(
-        'Tidak ada respons dari layanan YouTube.',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
+      message = `Tidak ada respons dari layanan YouTube saat ${action}.`;
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      this._logger.error(`${message}:`, axiosError.message);
     } else {
-      this._logger.error(
-        `Error saat menyiapkan permintaan ke YouTube API untuk ${action}:`,
-        axiosError.message,
-      );
-      throw new HttpException(
-        `Gagal menghubungi layanan YouTube: ${axiosError.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      message = `Error saat menyiapkan permintaan ke YouTube API untuk ${action}: ${axiosError.message}`;
+      this._logger.error(message);
     }
+    throw new HttpException(message, status);
   }
 
   /**
@@ -370,13 +476,14 @@ export class YoutubeService {
     videoApiItem?: any,
   ): SearchVideoItemDto {
     const searchSnippet = searchApiItem.snippet;
+    // Prioritize videoApiItem details if available, as search snippet can be less detailed
     const effectiveSnippet = videoApiItem?.snippet || searchSnippet;
     const statistics = videoApiItem?.statistics;
     const contentDetails = videoApiItem?.contentDetails;
 
     const viewCount = statistics?.viewCount
       ? parseInt(statistics.viewCount, 10)
-      : null;
+      : null; // Default to null if not available
     const publishedAtString = effectiveSnippet?.publishedAt;
     const publishedAtMoment = publishedAtString
       ? moment.utc(publishedAtString)
@@ -395,7 +502,7 @@ export class YoutubeService {
     const likeCountRaw = statistics?.likeCount;
 
     return {
-      video_id: searchApiItem.id.videoId,
+      video_id: searchApiItem.id.videoId, // videoId is always from searchApiItem
       published_at: publishedAtString,
       channel_id: effectiveSnippet?.channelId,
       title: effectiveSnippet?.title,
@@ -404,7 +511,7 @@ export class YoutubeService {
       thumbnail_medium_url: effectiveSnippet?.thumbnails?.medium?.url,
       thumbnail_high_url: effectiveSnippet?.thumbnails?.high?.url,
       channel_title: effectiveSnippet?.channelTitle,
-      live_broadcast_content: searchSnippet?.liveBroadcastContent,
+      live_broadcast_content: searchSnippet?.liveBroadcastContent, // This is specific to search result snippet
       view_count: viewCount,
       like_count: likeCountRaw ? parseInt(likeCountRaw, 10) : null,
       comment_count: statistics?.commentCount
@@ -413,19 +520,110 @@ export class YoutubeService {
       duration: contentDetails?.duration || null,
       vph: vph !== null ? parseFloat(vph.toFixed(2)) : null,
       formatted_view_count:
-        viewCount !== null ? this._formatNumber(viewCount) : null,
+        viewCount !== null ? this._formatNumber(viewCount) : 'N/A', // Handle null
       formatted_like_count: likeCountRaw
         ? this._formatNumber(parseInt(likeCountRaw, 10))
-        : null,
-      formatted_vph: vph !== null ? `${this._formatNumber(vph)}/hr` : null,
+        : 'N/A', // Handle null
+      formatted_vph: vph !== null ? `${this._formatNumber(vph)}/hr` : 'N/A', // Handle null
       time_since_upload:
         publishedAtMoment && publishedAtMoment.isValid()
           ? publishedAtMoment.fromNow()
           : 'N/A',
       formatted_duration: contentDetails?.duration
         ? this._formatYtDuration(contentDetails.duration)
-        : null,
+        : 'N/A', // Handle null
       tags: effectiveSnippet?.tags || [],
     };
+  }
+
+  /**
+   * @method getChannelDetails
+   * @description Mengambil detail channel YouTube berdasarkan ID channel.
+   * @param {string} channelId - ID unik dari channel YouTube.
+   * @param {string} [hl='id'] - Kode bahasa untuk lokalisasi data (opsional, default 'id').
+   * @returns {Promise<ChannelDetailsDto>} Detail channel.
+   * @throws {HttpException} Jika channel tidak ditemukan atau terjadi error API.
+   */
+  async getChannelDetails(
+    channelId: string,
+    hl: string = 'id',
+  ): Promise<ChannelDetailsDto> {
+    const url = `${this._baseUrl}/channels`;
+    const params = {
+      part: 'snippet,statistics,brandingSettings,contentDetails',
+      id: channelId,
+      key: this._apiKey,
+      hl,
+    };
+
+    this._logger.log(
+      `Mengambil detail channel dari YouTube API. Channel ID: ${channelId}, URL: ${url}, Params: ${JSON.stringify({ ...params, key: 'REDACTED_API_KEY' })}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this._httpService.get<ChannelListResponseDto>(url, { params }),
+      );
+
+      const youtubeData = response.data;
+      if (!youtubeData.items || youtubeData.items.length === 0) {
+        this._logger.warn(`Channel dengan ID "${channelId}" tidak ditemukan.`);
+        throw new HttpException(
+          'Channel tidak ditemukan',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Treat channelItem from API as 'any' to avoid type conflicts during mapping
+      // when the API structure (e.g., nested 'localized') differs from our DTO structure.
+      const channelItemFromApi = youtubeData.items[0] as any;
+
+      const transformedChannel: ChannelDetailsDto = {
+        kind: channelItemFromApi.kind,
+        etag: channelItemFromApi.etag,
+        id: channelItemFromApi.id,
+        snippet: {
+          title: channelItemFromApi.snippet.title,
+          description: channelItemFromApi.snippet.description,
+          customUrl: channelItemFromApi.snippet.customUrl,
+          publishedAt: channelItemFromApi.snippet.publishedAt,
+          thumbnails: channelItemFromApi.snippet.thumbnails, // Assuming DTO and API structure match here
+          localizedTitle: channelItemFromApi.snippet.localized?.title,
+          localizedDescription:
+            channelItemFromApi.snippet.localized?.description,
+          country: channelItemFromApi.snippet.country,
+        },
+        statistics: {
+          // Assuming DTO and API structure match for these fields
+          viewCount: channelItemFromApi.statistics.viewCount,
+          subscriberCount: channelItemFromApi.statistics.subscriberCount,
+          hiddenSubscriberCount:
+            channelItemFromApi.statistics.hiddenSubscriberCount,
+          videoCount: channelItemFromApi.statistics.videoCount,
+        },
+        brandingSettings: channelItemFromApi.brandingSettings
+          ? {
+              image: channelItemFromApi.brandingSettings.image
+                ? {
+                    bannerExternalUrl:
+                      channelItemFromApi.brandingSettings.image
+                        .bannerExternalUrl,
+                  }
+                : undefined,
+            }
+          : undefined,
+      };
+
+      this._logger.log(
+        `Berhasil mengambil detail untuk channel ID: ${channelId}`,
+      );
+      return transformedChannel;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error; // Lempar ulang jika sudah HttpException
+      }
+      // Gunakan _handleApiError untuk konsistensi penanganan error
+      this._handleApiError(error, `mengambil detail channel ID ${channelId}`);
+    }
   }
 }

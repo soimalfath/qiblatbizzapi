@@ -1,61 +1,48 @@
-import { Injectable, Logger } from '@nestjs/common'; // Added Logger
-import {
-  IAiProvider, // Renamed import alias for clarity if needed, but IAiProvider is fine
-  // IAiProviderResponse, // No longer needed here
-} from '../interfaces/ai-provider.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import { IAiProvider } from '../interfaces/ai-provider.interface';
 import { GeminiService } from '../services/gemini.service';
-import { OpenAiService } from '../services/openai.service';
-// Removed unused rxjs imports
-// import { from as rxFrom } from 'rxjs';
-// import { map } from 'rxjs/operators';
-// Import service provider lain di sini
+import { ElevenLabsService } from '../services/elevenlabs.service'; // <-- Make sure this is imported
 
-export type AiProviderType = 'gemini' | 'openai'; // Removed other types for now
+/**
+ * Defines the types of AI providers available.
+ * Add new provider types here.
+ */
+export type AiProviderType = 'gemini' | 'elevenlabs'; // <-- Add 'elevenlabs' if not present
 
+/**
+ * Factory class for creating instances of AI providers.
+ * This allows for easy swapping and management of different AI service integrations.
+ */
 @Injectable()
 export class AiProviderFactory {
-  private readonly logger = new Logger(AiProviderFactory.name); // Added logger
+  private readonly _logger = new Logger(AiProviderFactory.name);
 
   constructor(
-    // Inject semua service provider AI
-    private readonly geminiService: GeminiService,
-    private readonly openAiService: OpenAiService,
-    // Inject service lain di sini
+    private readonly _geminiService: GeminiService,
+    private readonly _elevenLabsService: ElevenLabsService, // <-- Inject ElevenLabsService
   ) {}
 
   /**
-   * Retrieves the appropriate AI provider service based on the requested type.
-   * @param providerName The type of AI provider requested.
-   * @returns The AI provider service instance.
-   * @throws {Error} If the requested provider is not supported.
+   * Retrieves an AI provider instance based on the specified type.
+   * @param type The type of AI provider to retrieve ('gemini', 'elevenlabs', etc.).
+   * @returns An instance of the AI provider.
+   * @throws Error if the provider type is not supported.
    */
-  getProvider(providerName: AiProviderType): IAiProvider {
-    this.logger.log(`Getting AI provider for type: ${providerName}`);
-    switch (providerName.toLowerCase()) {
+  getProvider(type: AiProviderType): IAiProvider {
+    this._logger.log(`Requesting AI provider of type: ${type}`);
+    switch (type) {
       case 'gemini':
-        // GeminiService already implements IAiProvider
-        return this.geminiService;
-      case 'openai':
-        // OpenAiService already implements IAiProvider
-        return this.openAiService;
-      // Tambahkan case untuk provider lain
-      // case 'deepseek':
-      //   return this.deepSeekService;
+        this._logger.log('Returning GeminiService instance.');
+        return this._geminiService;
+      case 'elevenlabs': // <-- Add this case
+        this._logger.log('Returning ElevenLabsService instance.');
+        return this._elevenLabsService;
       default:
-        // Handle unsupported providers explicitly
-        this.logger.error(`AI provider "${providerName}" not supported.`);
-        // Option 1: Throw an error
-        throw new Error(`AI provider "${providerName}" not supported.`);
-      // Option 2: Default to a provider (less recommended unless intended)
-      // console.warn(
-      //   `AI provider "${providerName}" not found or not implemented, defaulting to Gemini.`,
-      // );
-      // return this.geminiService;
+        this._logger.error(`AI provider "${type}" not supported.`);
+        // The following line ensures that 'type' is never, which is a good practice for exhaustiveness checking.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _exhaustiveCheck: never = type;
+        throw new Error(`AI provider "${type}" not supported.`);
     }
   }
 }
-
-// Removed the conflicting local 'from' function definition
-// function from(arg0: Promise<IAiProviderResponse>) {
-//   throw new Error('Function not implemented.');
-// }

@@ -11,17 +11,24 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import config from './../../config/jwt.config';
 import { DatabaseModule } from './../../database/database.module';
-// import databaseConfig from './../../config/database.config';
-import { MailService } from '../mailer/mailer.service';
+// import databaseConfig from './../../config/database.config'; // Dihapus
+// import { MailService } from '../mailer/mailer.service';
 import { MailModule } from '../mailer/mailer.module';
 
+/**
+ * Modul Autentikasi
+ * Bertanggung jawab untuk menangani semua aspek otentikasi dan otorisasi pengguna,
+ * termasuk login, registrasi, manajemen token JWT (akses dan refresh),
+ * dan integrasi dengan strategi otentikasi pihak ketiga seperti Google.
+ * Modul ini juga mengelola layanan terkait seperti pengiriman email untuk verifikasi.
+ */
 @Module({
   imports: [
     DatabaseModule,
     PassportModule,
     MailModule,
     TypeOrmModule.forFeature([UserEntity]),
-    // ConfigModule.forRoot({
+    // ConfigModule.forRoot({ // Dihapus
     //   isGlobal: true,
     //   load: [databaseConfig],
     // }),
@@ -34,17 +41,18 @@ import { MailModule } from '../mailer/mailer.module';
       }),
       inject: [ConfigService],
     }),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('config.refresh.secret'),
-        signOptions: {
-          expiresIn: configService.get('config.refresh.expiresIn'),
-        },
-      }),
-      inject: [ConfigService],
-      global: true,
-    }),
+    // Blok JwtModule.registerAsync untuk refresh token dengan global:true dihapus
+    // JwtModule.registerAsync({
+    //   imports: [ConfigModule],
+    //   useFactory: async (configService: ConfigService) => ({
+    //     secret: configService.get('config.refresh.secret'),
+    //     signOptions: {
+    //       expiresIn: configService.get('config.refresh.expiresIn'),
+    //     },
+    //   }),
+    //   inject: [ConfigService],
+    //   global: true,
+    // }),
   ],
   controllers: [AuthController],
   providers: [
@@ -52,7 +60,7 @@ import { MailModule } from '../mailer/mailer.module';
     JwtStrategy,
     RefreshTokenStrategy,
     GoogleStrategy,
-    MailService,
+    // MailService, // Dihapus dari providers, karena MailModule sudah diimpor dan seharusnya mengekspor MailService
     {
       provide: 'ACCESS_TOKEN_SERVICE',
       useExisting: JwtService,

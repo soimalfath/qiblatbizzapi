@@ -1,29 +1,40 @@
-import { Injectable, Logger } from '@nestjs/common'; // Tambahkan Logger
+import { Injectable, Logger } from '@nestjs/common'; // Tambahkan _Logger
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { map, catchError } from 'rxjs/operators';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { IElevenLabsConfig } from 'src/config/elevenlabs.config';
 import {
   AiProviderFactory,
   AiProviderType,
 } from './factories/ai-provider.factory'; // Impor Factory
 import { CreateYoutubeContentDto } from './dto/create-youtube-content.dto'; // Impor DTO
+import { GenerateSpeechDto } from './dto/generate-speech.dto';
+import { ElevenLabsService } from './services/elevenlabs.service'; // Pastikan ini diimpor jika akan di-cast
+import { IElevenLabsVoice } from './interfaces/elevenlabs.interface'; // <-- Impor interface
 
 @Injectable()
 export class AiService {
-  private readonly logger = new Logger(AiService.name); // Tambahkan logger
-  private readonly geminiApiKey: string;
-  private readonly geminiBaseUrl: string;
-  private readonly geminiModelName: string;
+  private readonly _logger = new Logger(AiService.name); // Tambahkan _logger
+  private readonly _geminiApiKey: string;
+  private readonly _geminiBaseUrl: string;
+  private readonly _geminiModelName: string;
+  private readonly _elevenLabsApiKey: string;
+  private readonly _elevenLabsBaseUrl: string;
 
   constructor(
-    private readonly configService: ConfigService,
-    private readonly httpService: HttpService,
-    private readonly aiProviderFactory: AiProviderFactory, // Suntikkan Factory
+    private readonly _configService: ConfigService,
+    private readonly _httpService: HttpService,
+    private readonly _aiProviderFactory: AiProviderFactory, // Suntikkan Factory
   ) {
-    this.geminiApiKey = this.configService.get<string>('GEMINI_APIKEY');
-    this.geminiBaseUrl = this.configService.get<string>('GEMINI_BASE_URL');
-    this.geminiModelName = this.configService.get<string>('GEMINI_MODEL_NAME');
+    const elevanLabsConfig =
+      this._configService.get<IElevenLabsConfig>('elevenlabs');
+    this._geminiApiKey = this._configService.get<string>('GEMINI_APIKEY');
+    this._geminiBaseUrl = this._configService.get<string>('GEMINI_BASE_URL');
+    this._geminiModelName =
+      this._configService.get<string>('GEMINI_MODEL_NAME');
+    this._elevenLabsApiKey = elevanLabsConfig.apiKey;
+    this._elevenLabsBaseUrl = elevanLabsConfig.baseUrl;
   }
 
   /**
@@ -31,28 +42,29 @@ export class AiService {
    * @param prompt_text Teks prompt untuk AI.
    * @returns Observable yang berisi data respons dari API Gemini atau HttpException jika terjadi error.
    */
-  generateCopyWriting(prompt_text: string) {
-    const url = `${this.geminiBaseUrl}${this.geminiModelName}:generateContent?key=${this.geminiApiKey}`;
+  generateCopyWriting(promptText: string) {
+    const url = `${this._geminiBaseUrl}${this._geminiModelName}:generateContent?key=${this._geminiApiKey}`;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const headers = { 'Content-Type': 'application/json' };
     const body = {
       contents: [
         {
-          parts: [{ text: prompt_text }],
+          parts: [{ text: promptText }],
         },
       ],
     };
 
-    return this.httpService.post(url, body, { headers }).pipe(
+    return this._httpService.post(url, body, { headers }).pipe(
       map((response) => {
         // Ekstrak teks dari respons Gemini
         try {
           return response.data.candidates[0].content.parts[0].text;
         } catch (e) {
-          this.logger.error(
+          this._logger.error(
             'Error parsing Gemini response for copywriting:',
             e,
           );
-          this.logger.debug(
+          this._logger.debug(
             'Full Gemini response:',
             JSON.stringify(response.data),
           );
@@ -63,7 +75,7 @@ export class AiService {
         }
       }),
       catchError((error) => {
-        this.logger.error(
+        this._logger.error(
           'Error calling Gemini API for copywriting:',
           error.response?.data || error.message,
         );
@@ -81,28 +93,28 @@ export class AiService {
    * @param dto Data Transfer Object berisi detail permintaan konten.
    * @returns Promise yang berisi data mentah dari AI provider.
    */
-  async generate_youtube_content(dto: CreateYoutubeContentDto): Promise<any> {
-    const provider_name: AiProviderType = 'gemini'; // <-- Provider diatur ke Gemini
-    const ai_provider = this.aiProviderFactory.getProvider(provider_name);
+  async generateYoutubeContent(dto: CreateYoutubeContentDto): Promise<any> {
+    const providerName: AiProviderType = 'gemini'; // <-- Provider diatur ke Gemini
+    const aiProvider = this._aiProviderFactory.getProvider(providerName);
 
-    const master_prompt = this._build_youtube_content_prompt(dto);
+    const masterPrompt = this._buildYoutubeContentPrompt(dto);
 
     try {
       // Ambil hasil mentah dari AI provider dan return langsung
-      const raw_response = await ai_provider.generate_content(master_prompt); // <-- Changed method call to snake_case
-      this.logger.log(
-        `Raw AI Response type for topic "${dto.topic}": ${typeof raw_response}`,
+      const rawResponse = await aiProvider.generateContent(masterPrompt); // <-- Changed method call to snake_case
+      this._logger.log(
+        `Raw AI Response type for topic "${dto.topic}": ${typeof rawResponse}`,
       );
-      this.logger.debug(
-        // <-- Log ini menunjukkan raw_response adalah {"source":{"source":{}}}
+      this._logger.debug(
+        // <-- Log ini menunjukkan rawResponse adalah {"source":{"source":{}}}
         `Raw AI Response value for topic "${dto.topic}":`,
-        typeof raw_response === 'object'
-          ? JSON.stringify(raw_response, null, 2)
-          : raw_response,
+        typeof rawResponse === 'object'
+          ? JSON.stringify(rawResponse, null, 2)
+          : rawResponse,
       );
-      return raw_response; // <-- Mengembalikan nilai mentah tersebut
+      return rawResponse; // <-- Mengembalikan nilai mentah tersebut
     } catch (error) {
-      this.logger.error(
+      this._logger.error(
         `Error during YouTube content generation for topic "${dto.topic}":`,
         error,
       );
@@ -117,12 +129,107 @@ export class AiService {
   }
 
   /**
+   * Menghasilkan audio dari teks menggunakan ElevenLabs.
+   * @param generateSpeechDto DTO yang berisi teks dan konfigurasi suara opsional.
+   * @returns Promise yang berisi Buffer audio.
+   * @throws {HttpException} Jika terjadi error saat memanggil API atau memproses.
+   */
+  async generateSpeech(generateSpeechDto: GenerateSpeechDto): Promise<Buffer> {
+    const providerName: AiProviderType = 'elevenlabs'; // Tentukan provider ElevenLabs
+    const aiProvider = this._aiProviderFactory.getProvider(providerName);
+
+    // ElevenLabsService.generateContent mengharapkan string JSON sebagai prompt
+    // yang berisi text, voiceId (opsional), dan modelId (opsional).
+    const promptPayload = {
+      text: generateSpeechDto.text,
+      voiceId: generateSpeechDto.voiceId,
+      modelId: generateSpeechDto.modelId,
+    };
+
+    try {
+      this._logger.log(
+        `Generating speech with ElevenLabs for text: "${generateSpeechDto.text.substring(0, 50)}..."`,
+      );
+      const audioBuffer = await aiProvider.generateContent(
+        JSON.stringify(promptPayload),
+      );
+      if (!(audioBuffer instanceof Buffer)) {
+        this._logger.error(
+          'ElevenLabs service did not return a Buffer.',
+          typeof audioBuffer,
+        );
+        throw new HttpException(
+          'Failed to generate audio: Invalid response format from provider.',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      this._logger.log('Successfully generated speech audio buffer.');
+      return audioBuffer;
+    } catch (error) {
+      this._logger.error(
+        'Error during ElevenLabs speech generation:',
+        error.message,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to generate speech: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Mendapatkan daftar suara yang tersedia dari ElevenLabs.
+   * @returns Promise yang berisi array objek suara.
+   * @throws {HttpException} Jika terjadi error.
+   */
+  async listElevenLabsVoices(): Promise<IElevenLabsVoice[]> {
+    const providerName: AiProviderType = 'elevenlabs';
+    const aiProvider = this._aiProviderFactory.getProvider(providerName);
+
+    // Pastikan provider adalah instance dari ElevenLabsService untuk memanggil listVoices
+    // Ini adalah cara aman untuk memastikan metode tersebut ada.
+    if (!(aiProvider instanceof ElevenLabsService)) {
+      this._logger.error(
+        'Provider is not an instance of ElevenLabsService. Cannot list voices.',
+      );
+      throw new HttpException(
+        'Voice listing is not supported by the configured AI provider.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    try {
+      this._logger.log('Fetching list of voices from ElevenLabs provider.');
+      const voices = await aiProvider.listVoices();
+      this._logger.log(`Successfully fetched ${voices.length} voices.`);
+      return voices;
+    } catch (error) {
+      this._logger.error(
+        'Error during ElevenLabs voice listing:',
+        error.message,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to list voices: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Membangun prompt master untuk generasi konten YouTube.
    * @param dto Data Transfer Object berisi detail permintaan konten.
    * @returns String prompt yang siap digunakan.
    * @private
    */
-  private _build_youtube_content_prompt(dto: CreateYoutubeContentDto): string {
+  private _buildYoutubeContentPrompt(dto: CreateYoutubeContentDto): string {
     // Logika pembuatan prompt yang sebelumnya ada di PromptBuilderService
     return `
 Tolong buatkan konten YouTube lengkap tentang topik "[ ${dto.topic} ]" dengan detail berikut.

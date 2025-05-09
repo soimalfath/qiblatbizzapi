@@ -15,10 +15,11 @@ import {
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchVideosResponseDto } from './dto/search-videos-response.dto';
 import { GetVideoDetailsParamsDto } from './dto/get-video-details-params.dto'; // Tambahkan DTO baru
+// import { ResponseHelper } from 'src/utils/response.helper';
 
 @Controller('youtube')
 export class YoutubeController {
-  constructor(private readonly youtube_service: YoutubeService) {}
+  constructor(private readonly _youtubeService: YoutubeService) {}
 
   /**
    * Endpoint untuk mendapatkan daftar video trending dari YouTube.
@@ -33,10 +34,10 @@ export class YoutubeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async get_trending_videos(
-    @Query() query_params: GetTrendingVideosDto,
+  async getTrendingVideos(
+    @Query() queryParams: GetTrendingVideosDto,
   ): Promise<TrendingVideosResponseDto> {
-    return this.youtube_service.get_trending_videos(query_params);
+    return this._youtubeService.getTrendingVideos(queryParams);
   }
 
   /**
@@ -52,10 +53,10 @@ export class YoutubeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async search_videos(
-    @Query() query_params: SearchVideosDto,
+  async searchVideos(
+    @Query() queryParams: SearchVideosDto,
   ): Promise<SearchVideosResponseDto> {
-    return this.youtube_service.search_videos(query_params);
+    return this._youtubeService.searchVideos(queryParams);
   }
 
   /**
@@ -71,9 +72,9 @@ export class YoutubeController {
       forbidNonWhitelisted: true,
     }),
   )
-  async get_video_details(
+  async getVideoDetails(
     @Param() params: GetVideoDetailsParamsDto,
   ): Promise<TrendingVideoItemDto> {
-    return this.youtube_service.get_video_details(params.video_id);
+    return this._youtubeService.getVideoDetails(params.video_id);
   }
 }

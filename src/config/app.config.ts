@@ -5,8 +5,8 @@ import { registerAs } from '@nestjs/config';
  * Mengambil nilai dari environment variables.
  */
 const appConfiguration = registerAs('app', () => ({
-  front_end_url: process.env.FRONT_END_URL,
-  node_env: process.env.NODE_ENV || 'development',
+  frontEndUrl: process.env.FRONT_END_URL,
+  nodeEnv: process.env.NODE_ENV || 'development',
 }));
 
 export default appConfiguration;

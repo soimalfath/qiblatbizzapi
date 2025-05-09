@@ -10,13 +10,13 @@ import { Roles } from '../../common/decorators/roles.decorator';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly usersService: UserService) {}
+  constructor(private readonly _usersService: UserService) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('profile')
   async getProfile(@Req() req: Request, @Res() res: Response) {
     try {
       const userId = req.user['id'];
-      const userData = await this.usersService.getUserProfile(userId);
+      const userData = await this._usersService.getUserProfile(userId);
       const user = {
         email: userData.email,
         name: userData.name,
@@ -45,7 +45,7 @@ export class UserController {
   @Roles(Role.ADMIN)
   async getAllProfile(@Res() res: Response) {
     try {
-      const users = await this.usersService.getAllUser();
+      const users = await this._usersService.getAllUser();
       const mappedUsers = users.map((item) => {
         return {
           email: item.email,

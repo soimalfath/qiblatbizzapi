@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 // Interface untuk response dari HttpException
-interface HttpExceptionResponse {
+interface IHttpExceptionResponse {
   message: string | string[];
   statusCode?: number;
   error?: string;
@@ -39,7 +39,7 @@ export class ResponseHelper {
   static handleError(error: unknown) {
     if (error instanceof HttpException) {
       const status = error.getStatus();
-      const response = error.getResponse() as string | HttpExceptionResponse;
+      const response = error.getResponse() as string | IHttpExceptionResponse;
 
       let errorMessage: string;
 

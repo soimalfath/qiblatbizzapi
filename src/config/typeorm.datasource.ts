@@ -3,7 +3,7 @@ import * as dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables
 
-export const AppDataSource = new DataSource({
+export const appDataSource = new DataSource({
   type: 'mysql',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT, 10) || 3306,

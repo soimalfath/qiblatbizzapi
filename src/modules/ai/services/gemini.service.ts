@@ -1,42 +1,44 @@
-import { Injectable, Logger, Inject } from '@nestjs/common'; // Tambahkan Inject
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-// import { ConfigService } from '@nestjs/config'; // Hapus jika tidak digunakan lagi
-import { ConfigType } from '@nestjs/config'; // Tambahkan ConfigType
-import geminiConfiguration from '../../../config/gemini.config'; // Impor konfigurasi gemini
+import { ConfigType } from '@nestjs/config';
+import geminiConfiguration from '../../../config/gemini.config';
 import { map, catchError, firstValueFrom } from 'rxjs';
 import { AxiosRequestConfig } from 'axios';
-import {
-  IAiProvider,
-  // IAiProviderResponse, // Removed if not used directly by the method signature
-} from '../interfaces/ai-provider.interface';
+import { IAiProvider } from '../interfaces/ai-provider.interface';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
+/**
+ * Service for interacting with Google Gemini AI API
+ */
 @Injectable()
 export class GeminiService implements IAiProvider {
-  private readonly logger = new Logger(GeminiService.name);
-  private readonly api_key: string;
-  private readonly base_url: string;
-  private readonly model_ai: string;
+  private readonly _logger = new Logger(GeminiService.name);
+  private readonly _apiKey: string;
+  private readonly _baseUrl: string;
+  private readonly _modelAi: string;
 
+  /**
+   * Creates an instance of GeminiService
+   * @param _httpService HttpService instance
+   * @param _gemConfig Injected Gemini configuration
+   */
   constructor(
-    private readonly http_service: HttpService,
-    // private readonly config_service: ConfigService, // Hapus ini
+    private readonly _httpService: HttpService,
     @Inject(geminiConfiguration.KEY)
-    private readonly gem_config: ConfigType<typeof geminiConfiguration>, // Suntikkan geminiConfig
+    private readonly _gemConfig: ConfigType<typeof geminiConfiguration>,
   ) {
-    this.base_url = this.gem_config.base_url; // Gunakan dari gem_config
-    this.api_key = this.gem_config.api_key; // Gunakan dari gem_config
-    this.model_ai = this.gem_config.model_ai; // Gunakan dari gem_config
+    this._baseUrl = this._gemConfig.baseUrl;
+    this._apiKey = this._gemConfig.apiKey;
+    this._modelAi = this._gemConfig.modelAi;
   }
 
   /**
-   * Menghasilkan konten menggunakan API Google Gemini dan mengembalikan objek hasil parse.
-   * @param prompt Teks prompt untuk AI.
-   * @returns Promise yang berisi objek hasil parse dari respons AI atau melempar error.
-   * @throws {HttpException} Jika terjadi error saat memanggil API, memproses respons, atau parsing JSON.
+   * Generates content using Google Gemini API
+   * @param prompt Text prompt for the AI
+   * @returns Promise containing parsed response object
+   * @throws HttpException when API call fails or response parsing fails
    */
-  async generate_content(prompt: string): Promise<any> {
-    // Naming convention: snake_case, return type Promise<any>
+  async generateContent(prompt: string): Promise<any> {
     const data = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
@@ -44,74 +46,70 @@ export class GeminiService implements IAiProvider {
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 2048,
-        // Meminta output JSON secara eksplisit jika API mendukung
-        response_mime_type: 'application/json',
+        responseMimeType: 'application/json',
       },
     };
 
     const headers: AxiosRequestConfig['headers'] = {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       'Content-Type': 'application/json',
     };
 
-    const url = `${this.base_url}${this.model_ai}:generateContent?key=${this.api_key}`;
+    const url = `${this._baseUrl}${this._modelAi}:generateContent?key=${this._apiKey}`;
 
-    this.logger.debug(`Mengirim request ke Gemini API: ${url}`);
-    this.logger.debug(`Request body: ${JSON.stringify(data)}`);
+    this._logger.debug(`Sending request to Gemini API: ${url}`);
+    this._logger.debug(`Request body: ${JSON.stringify(data)}`);
 
     try {
       const result = await firstValueFrom(
-        this.http_service.post<any>(url, data, { headers }).pipe(
+        this._httpService.post<any>(url, data, { headers }).pipe(
           map((response) => {
-            this.logger.debug(
-              `Respons mentah dari Gemini API: ${JSON.stringify(response.data)}`,
+            this._logger.debug(
+              `Raw response from Gemini API: ${JSON.stringify(response.data)}`,
             );
 
-            const text_content =
+            const textContent =
               response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-            if (typeof text_content !== 'string') {
-              this.logger.error(
-                'Respons dari Gemini API tidak memiliki struktur teks yang diharapkan.',
+            if (typeof textContent !== 'string') {
+              this._logger.error(
+                'Unexpected response structure from Gemini API',
                 JSON.stringify(response.data),
               );
               throw new HttpException(
-                'Respons dari Gemini API tidak memiliki struktur yang diharapkan',
+                'Unexpected response structure from Gemini API',
                 HttpStatus.BAD_GATEWAY,
               );
             }
 
-            this.logger.log('Berhasil mengekstrak konten teks dari Gemini.');
+            this._logger.log('Successfully extracted text content from Gemini');
 
             try {
-              // Hapus backticks markdown jika ada sebelum parsing
-              const cleaned_text = text_content.replace(
-                /^```json\s*|```$/g,
-                '',
-              );
-              const parsed_object = JSON.parse(cleaned_text);
-              this.logger.log('Berhasil mem-parsing JSON dari respons teks.');
-              return parsed_object; // Kembalikan objek hasil parse
-            } catch (parse_error) {
-              this.logger.error(
-                'Gagal mem-parsing JSON dari respons teks Gemini:',
-                parse_error.message,
-                `Teks asli: ${text_content}`, // Log teks asli untuk debug
+              const cleanedText = textContent.replace(/^```json\s*|```$/g, '');
+              const parsedObject = JSON.parse(cleanedText);
+              this._logger.log('Successfully parsed JSON from text response');
+              return parsedObject;
+            } catch (parseError) {
+              this._logger.error(
+                'Failed to parse JSON from Gemini response:',
+                parseError.message,
+                `Original text: ${textContent}`,
               );
               throw new HttpException(
-                'Gagal mem-parsing respons JSON dari AI',
-                HttpStatus.INTERNAL_SERVER_ERROR, // Atau BAD_GATEWAY jika dianggap error dari AI
+                'Failed to parse JSON response from AI',
+                HttpStatus.INTERNAL_SERVER_ERROR,
               );
             }
           }),
           catchError((error) => {
-            this.logger.error(
-              'Error saat memanggil Gemini API:',
+            this._logger.error(
+              'Error calling Gemini API:',
               error.response?.data || error.message,
               error.stack,
             );
             throw new HttpException(
               error.response?.data?.error?.message ||
-                'Gagal menghubungi Gemini API',
+                'Failed to contact Gemini API',
               error.response?.status || HttpStatus.BAD_GATEWAY,
             );
           }),
@@ -119,18 +117,14 @@ export class GeminiService implements IAiProvider {
       );
       return result;
     } catch (error) {
-      this.logger.error(
-        'Error dalam generate_content setelah pemanggilan API:',
-        error,
-      );
+      this._logger.error('Error in generateContent after API call:', error);
       if (error instanceof HttpException) {
         throw error;
-      } else {
-        throw new HttpException(
-          'Terjadi kesalahan internal saat memproses permintaan AI',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
       }
+      throw new HttpException(
+        'Internal error while processing AI request',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

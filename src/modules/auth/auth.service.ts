@@ -27,22 +27,22 @@ import { ConfirmResetPasswordDto } from './dto/forgot-password.dto';
 export class AuthService {
   constructor(
     @Inject('ACCESS_TOKEN_SERVICE')
-    private readonly accessTokenService: JwtService,
+    private readonly _accessTokenService: JwtService,
     @Inject('REFRESH_TOKEN_SERVICE')
-    private readonly refreshTokenService: JwtService,
+    private readonly _refreshTokenService: JwtService,
     @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
-    private configService: ConfigService,
-    private mailService: MailService,
-    private tokenService: JwtService,
+    private _userRepository: Repository<UserEntity>,
+    private _configService: ConfigService,
+    private _mailService: MailService,
+    private _tokenService: JwtService,
   ) {}
 
   generateJwt(payload) {
-    return this.accessTokenService.sign(payload);
+    return this._accessTokenService.sign(payload);
   }
 
   generateRefresh(payload) {
-    return this.refreshTokenService.sign(payload);
+    return this._refreshTokenService.sign(payload);
   }
 
   async hashingPassword(password: string): Promise<string> {
@@ -61,13 +61,13 @@ export class AuthService {
   async sendVerificationEmail(user: UserEntity) {
     if (user.isConfirmed) throw new ConflictException('Email already verified');
     const payload = { email: user.email };
-    const token = this.tokenService.sign(payload, {
+    const token = this._tokenService.sign(payload, {
       expiresIn: '1d',
       secret: '.wi7nd.[-',
     });
     const type = 'emailVerification';
-    const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;
-    await this.mailService.sendEmail(
+    const confirmationUrl = `${this._configService.get<string>('FRONT_END_URL')}/auth/confirm?code=${token}`;
+    await this._mailService.sendEmail(
       type,
       user.email,
       user.name,
@@ -77,7 +77,7 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     try {
-      const payload = await this.accessTokenService.verifyAsync(token, {
+      const payload = await this._accessTokenService.verifyAsync(token, {
         secret: '.wi7nd.[-',
       });
 
@@ -85,7 +85,7 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('Invalid token');
 
       user.isConfirmed = true;
-      await this.userRepository.update(user.id, { isConfirmed: true });
+      await this._userRepository.update(user.id, { isConfirmed: true });
 
       return { message: 'Email verified successfully' };
     } catch (error) {
@@ -96,10 +96,10 @@ export class AuthService {
   async registerManualUser(user: RegisterManualUserDto) {
     const userExists = await this.findUserByEmail(user.email);
     if (userExists) throw new ConflictException('Email already in use');
-    const newUser = this.userRepository.create(user);
+    const newUser = this._userRepository.create(user);
     newUser.name = user.username;
     newUser.password = await this.hashingPassword(user.password);
-    await this.userRepository.save(newUser);
+    await this._userRepository.save(newUser);
     await this.sendVerificationEmail(newUser);
   }
 
@@ -121,7 +121,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.generateTokens(userExists);
+    return this._generateTokens(userExists);
   }
 
   async signIn(user) {
@@ -138,17 +138,17 @@ export class AuthService {
       return this.registerUser(user);
     }
 
-    return this.generateTokens(userExists);
+    return this._generateTokens(userExists);
   }
 
   async registerUser(user: RegisterUserDto) {
     try {
-      const newUser = this.userRepository.create(user);
+      const newUser = this._userRepository.create(user);
       newUser.name = generateFromEmail(user.email, 5);
       newUser.isConfirmed = true;
-      await this.userRepository.save(newUser);
+      await this._userRepository.save(newUser);
 
-      return this.generateTokens(newUser);
+      return this._generateTokens(newUser);
     } catch (error) {
       console.error('Error in registerUser:', error);
       throw new InternalServerErrorException(
@@ -158,7 +158,7 @@ export class AuthService {
   }
 
   async findUserByEmail(email: string) {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this._userRepository.findOne({ where: { email } });
 
     if (!user) {
       return null;
@@ -167,10 +167,12 @@ export class AuthService {
     return user;
   }
 
-  private generateTokens(user: UserEntity) {
+  private _generateTokens(user: UserEntity) {
     const payload = { sub: user.id, email: user.email, role: [user.role] };
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const access_token = this.generateJwt(payload);
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     const refresh_token = this.generateRefresh(payload);
 
     return {
@@ -181,16 +183,19 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      const payload = await this.refreshTokenService.verifyAsync(refreshToken, {
-        secret: this.configService.get('config.refresh.secret'),
-      });
-      const user = await this.userRepository.findOne({
+      const payload = await this._refreshTokenService.verifyAsync(
+        refreshToken,
+        {
+          secret: this._configService.get('config.refresh.secret'),
+        },
+      );
+      const user = await this._userRepository.findOne({
         where: { id: payload.sub },
       });
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
-      return this.generateTokens(user);
+      return this._generateTokens(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -207,17 +212,17 @@ export class AuthService {
       email: userExists.email,
     };
     const type = 'forgotPassword';
-    const token = this.tokenService.sign(payload, {
+    const token = this._tokenService.sign(payload, {
       expiresIn: '6h',
       secret: '737hgh.',
     });
     const username = userExists.name;
-    const confirmationUrl = `${this.configService.get<string>('FRONT_END_URL')}/auth/reset-password?code=${token}`;
-    await this.mailService.sendEmail(type, email, username, confirmationUrl);
+    const confirmationUrl = `${this._configService.get<string>('FRONT_END_URL')}/auth/reset-password?code=${token}`;
+    await this._mailService.sendEmail(type, email, username, confirmationUrl);
   }
 
   async verifyResetPassword(resetPassword: ConfirmResetPasswordDto) {
-    const payload = await this.tokenService.verify(resetPassword.token, {
+    const payload = await this._tokenService.verify(resetPassword.token, {
       secret: '737hgh.',
     });
     if (!payload) throw new UnauthorizedException('Invalid token');
@@ -232,10 +237,10 @@ export class AuthService {
         'New password cannot be the same as the old password',
       );
     const newPassword = await this.hashingPassword(resetPassword.password);
-    await this.userRepository.update(userExists.id, { password: newPassword });
-    const urlLogin = `${this.configService.get<string>('FRONT_END_URL')}/auth/signin`;
+    await this._userRepository.update(userExists.id, { password: newPassword });
+    const urlLogin = `${this._configService.get<string>('FRONT_END_URL')}/auth/signin`;
     const type = 'passwordResetConfirmation';
-    await this.mailService.sendEmail(
+    await this._mailService.sendEmail(
       type,
       userExists.email,
       userExists.name,

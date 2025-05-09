@@ -59,14 +59,14 @@ export class SearchVideosDto {
   @IsInt()
   @Min(1)
   @Max(50)
-  max_results?: number = 10;
+  maxResults?: number = 10;
 
   /**
    * @description Token untuk halaman hasil berikutnya.
    */
   @IsOptional()
   @IsString()
-  page_token?: string;
+  pageToken?: string;
 
   /**
    * @description Kode wilayah untuk memfilter hasil pencarian.
@@ -74,7 +74,7 @@ export class SearchVideosDto {
    */
   @IsOptional()
   @IsString()
-  region_code?: string;
+  regionCode?: string;
 
   /**
    * @description Bahasa untuk metadata dalam respons.

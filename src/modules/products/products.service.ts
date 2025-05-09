@@ -10,18 +10,18 @@ import { NotFoundException } from '@nestjs/common';
 export class ProductsService {
   constructor(
     @InjectRepository(ProductEntity)
-    private productRepository: Repository<ProductEntity>,
+    private _productRepository: Repository<ProductEntity>,
   ) {}
   create(id: string, createProductDto: CreateProductDto) {
-    const newProduct = this.productRepository.create({
+    const newProduct = this._productRepository.create({
       ...createProductDto,
       user: { id: id },
     });
-    return this.productRepository.save(newProduct);
+    return this._productRepository.save(newProduct);
   }
 
   async findAll(userId: string) {
-    const products = await this.productRepository.find({
+    const products = await this._productRepository.find({
       where: { user: { id: userId } },
       // take: 10, // Mengambil hanya 10 produk
     });
@@ -29,7 +29,7 @@ export class ProductsService {
   }
 
   async findOne(id: number, userId: string) {
-    const product = await this.productRepository.findOne({
+    const product = await this._productRepository.findOne({
       where: { id: id, user: { id: userId } }, // Validasi kepemilikan produk
     });
 
@@ -43,17 +43,17 @@ export class ProductsService {
   }
 
   async update(id: number, updateProductDto: UpdateProductDto) {
-    const product = await this.productRepository.findOne({ where: { id } });
+    const product = await this._productRepository.findOne({ where: { id } });
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
     Object.assign(product, updateProductDto);
 
-    return this.productRepository.save(product);
+    return this._productRepository.save(product);
   }
 
   async remove(id: number) {
-    return this.productRepository.delete(id);
+    return this._productRepository.delete(id);
   }
 }

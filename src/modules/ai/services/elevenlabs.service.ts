@@ -1,64 +1,76 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  HttpException,
+  HttpStatus,
+  Inject, // <-- Tambahkan Inject
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
+// import { ConfigService } from '@nestjs/config'; // Hapus ConfigService jika tidak digunakan lagi untuk ElevenLabs
+import { ConfigType } from '@nestjs/config'; // <-- Tambahkan ConfigType
+import elevenLabsConfiguration from '../../../config/elevenlabs.config'; // <-- Impor konfigurasi ElevenLabs
 import { IAiProvider } from '../interfaces/ai-provider.interface';
 import { firstValueFrom } from 'rxjs';
 import { AxiosRequestConfig, AxiosError } from 'axios';
+import {
+  IElevenLabsVoice,
+  IElevenLabsVoicesResponse,
+} from '../interfaces/elevenlabs.interface';
 
 interface IElevenLabsPromptPayload {
   text: string;
-  voice_id?: string;
-  model_id?: string;
+  voiceId?: string;
+  modelId?: string;
 }
 
 /**
- * Layanan untuk berinteraksi dengan API ElevenLabs untuk Text-to-Speech.
+ * Service untuk berinteraksi dengan API Text-to-Speech ElevenLabs.
  */
 @Injectable()
 export class ElevenLabsService implements IAiProvider {
-  private readonly logger = new Logger(ElevenLabsService.name);
-  private readonly api_key: string;
-  private readonly base_url: string;
-  private readonly default_voice_id: string;
-  private readonly default_model_id: string;
+  private readonly _logger = new Logger(ElevenLabsService.name);
+  private readonly _apiKey: string;
+  private readonly _baseUrl: string;
+  private readonly _defaultVoiceId: string;
+  private readonly _defaultModelId: string;
 
   constructor(
-    private readonly http_service: HttpService,
-    private readonly config_service: ConfigService,
+    private readonly _httpService: HttpService,
+    // private readonly _configService: ConfigService, // Hapus jika diganti
+    @Inject(elevenLabsConfiguration.KEY) // <-- Suntikkan konfigurasi ElevenLabs
+    private readonly _elevenLabsConfig: ConfigType<
+      typeof elevenLabsConfiguration
+    >,
   ) {
-    this.api_key = this.config_service.get<string>('ELEVENLABS_API_KEY');
-    this.base_url = this.config_service.get<string>(
-      'ELEVENLABS_BASE_URL',
-      'https://api.elevenlabs.io/v1',
-    );
-    this.default_voice_id = this.config_service.get<string>(
-      'ELEVENLABS_DEFAULT_VOICE_ID',
-      '21m00Tcm4TlvDq8ikWAM',
-    ); // Contoh ID suara default (Rachel)
-    this.default_model_id = this.config_service.get<string>(
-      'ELEVENLABS_DEFAULT_MODEL_ID',
-      'eleven_multilingual_v2',
-    );
+    this._apiKey = this._elevenLabsConfig.apiKey;
+    this._baseUrl = this._elevenLabsConfig.baseUrl;
+    this._defaultVoiceId = this._elevenLabsConfig.defaultVoiceId;
+    this._defaultModelId = this._elevenLabsConfig.defaultModelId;
 
-    if (!this.api_key) {
-      this.logger.error('ELEVENLABS_API_KEY tidak dikonfigurasi.');
-      throw new Error('ELEVENLABS_API_KEY tidak dikonfigurasi.');
+    // Validasi API Key sudah dilakukan di file konfigurasi,
+    // namun bisa ditambahkan pengecekan di sini jika diperlukan untuk logika service.
+    if (!this._apiKey) {
+      this._logger.error(
+        'ElevenLabs API Key is not configured. Service might not work.',
+      );
+      // Pertimbangkan untuk melempar error di sini jika service tidak bisa berfungsi tanpa API Key
+      // throw new Error('ElevenLabs API Key is missing in configuration.');
     }
   }
 
   /**
-   * Menghasilkan audio ucapan dari teks menggunakan API ElevenLabs.
-   * @param prompt_json_string String JSON yang berisi 'text', dan secara opsional 'voice_id', 'model_id'.
-   * @returns Promise yang menghasilkan Buffer berisi data audio.
+   * Menghasilkan audio dari teks menggunakan API ElevenLabs.
+   * @param promptJsonString String JSON yang berisi 'text' dan opsional 'voiceId', 'modelId'.
+   * @returns Promise yang berisi Buffer audio.
    * @throws {HttpException} Jika panggilan API gagal atau prompt tidak valid.
    */
-  async generate_content(prompt_json_string: string): Promise<Buffer> {
+  async generateContent(promptJsonString: string): Promise<Buffer> {
     let payload: IElevenLabsPromptPayload;
     try {
-      payload = JSON.parse(prompt_json_string);
+      payload = JSON.parse(promptJsonString);
     } catch (error) {
-      this.logger.error(
-        'Gagal mem-parse string JSON prompt untuk ElevenLabs:',
+      this._logger.error(
+        'Gagal mem-parsing JSON prompt untuk ElevenLabs:',
         error.message,
       );
       throw new HttpException(
@@ -67,86 +79,77 @@ export class ElevenLabsService implements IAiProvider {
       );
     }
 
-    const {
-      text,
-      voice_id: custom_voice_id,
-      model_id: custom_model_id,
-    } = payload;
+    const { text, voiceId: customVoiceId, modelId: customModelId } = payload;
 
     if (!text || typeof text !== 'string' || text.trim() === '') {
-      this.logger.error('Teks untuk sintesis ucapan kosong atau tidak valid.');
+      this._logger.error('Teks untuk sintesis suara kosong atau tidak valid.');
       throw new HttpException(
-        'Teks untuk sintesis ucapan tidak boleh kosong.',
+        'Teks untuk sintesis suara tidak boleh kosong.',
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const voice_id_to_use = custom_voice_id || this.default_voice_id;
-    const model_id_to_use = custom_model_id || this.default_model_id;
+    const voiceIdToUse = customVoiceId || this._defaultVoiceId;
+    const modelIdToUse = customModelId || this._defaultModelId;
 
-    const url = `${this.base_url}/text-to-speech/${voice_id_to_use}`;
+    const url = `${this._baseUrl}/text-to-speech/${voiceIdToUse}`;
     const headers: AxiosRequestConfig['headers'] = {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       'Content-Type': 'application/json',
-      'xi-api-key': this.api_key,
-      Accept: 'audio/mpeg', // Meminta format audio MPEG
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      'xi-api-key': this._apiKey,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      Accept: 'audio/mpeg',
     };
 
     const body = {
-      text: text,
-      model_id: model_id_to_use,
-      // voice_settings opsional, bisa ditambahkan jika perlu
-      // voice_settings: {
-      //   stability: 0.5,
-      //   similarity_boost: 0.75
-      // }
+      text,
+      model_id: modelIdToUse, // API ElevenLabs menggunakan snake_case untuk model_id di body
     };
 
-    this.logger.log(
-      `Mengirim permintaan ke ElevenLabs: URL=${url}, Model=${model_id_to_use}, VoiceID=${voice_id_to_use}`,
+    this._logger.log(
+      `Mengirim permintaan ke ElevenLabs: URL=${url}, Model=${modelIdToUse}, VoiceID=${voiceIdToUse}`,
     );
 
     try {
       const response = await firstValueFrom(
-        this.http_service.post(url, body, {
+        this._httpService.post(url, body, {
           headers,
-          responseType: 'arraybuffer', // Penting untuk mendapatkan audio sebagai Buffer
+          responseType: 'arraybuffer',
         }),
       );
-      this.logger.log(
+      this._logger.log(
         `Berhasil menerima audio dari ElevenLabs. Ukuran data: ${response.data.byteLength} bytes.`,
       );
       return response.data;
     } catch (error) {
-      const axios_error = error as AxiosError;
-      if (axios_error.response) {
-        // Error dari API ElevenLabs
-        const error_data = axios_error.response.data as any;
-        const error_message =
-          error_data?.detail?.message ||
-          error_data?.message ||
+      const axiosError = error as AxiosError;
+      if (axiosError.response) {
+        const errorData = axiosError.response.data as any;
+        const errorMessage =
+          errorData?.detail?.message ||
+          errorData?.message ||
           'Gagal menghasilkan audio dari ElevenLabs.';
-        const error_status =
-          axios_error.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
-        this.logger.error(
-          `Error dari API ElevenLabs (Status: ${error_status}): ${error_message}`,
-          JSON.stringify(error_data),
+        const errorStatus =
+          axiosError.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
+        this._logger.error(
+          `Error dari API ElevenLabs (Status: ${errorStatus}): ${errorMessage}`,
+          JSON.stringify(errorData),
         );
-        throw new HttpException(error_message, error_status);
-      } else if (axios_error.request) {
-        // Permintaan dibuat tapi tidak ada respons
-        this.logger.error(
-          'Tidak ada respons dari ElevenLabs API:',
-          axios_error.message,
+        throw new HttpException(errorMessage, errorStatus);
+      } else if (axiosError.request) {
+        this._logger.error(
+          'Tidak ada respons dari API ElevenLabs:',
+          axiosError.message,
         );
         throw new HttpException(
           'Tidak ada respons dari layanan Text-to-Speech.',
           HttpStatus.SERVICE_UNAVAILABLE,
         );
       } else {
-        // Error lain saat menyiapkan permintaan
-        this.logger.error(
+        this._logger.error(
           'Error saat menyiapkan permintaan ke ElevenLabs:',
-          axios_error.message,
+          axiosError.message,
         );
         throw new HttpException(
           'Gagal menghubungi layanan Text-to-Speech.',
@@ -157,20 +160,106 @@ export class ElevenLabsService implements IAiProvider {
   }
 
   /**
-   * Metode ini tidak relevan untuk ElevenLabs TTS karena inputnya adalah teks, bukan prompt kompleks.
-   * Namun, untuk memenuhi kontrak IAiProvider, kita implementasikan sebagai no-op atau throw error.
-   * @param _dto Data Transfer Object (tidak digunakan).
-   * @returns String kosong atau throw error.
-   * @private
-   * @deprecated Tidak digunakan untuk ElevenLabsService.
+   * Mengambil daftar suara yang tersedia dari API ElevenLabs.
+   * @returns Promise yang berisi array objek suara.
+   * @throws {HttpException} Jika terjadi error saat memanggil API.
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private _build_master_prompt(_dto: any): string {
-    this.logger.warn(
-      '_build_master_prompt dipanggil pada ElevenLabsService, yang seharusnya tidak terjadi.',
+  async listVoices(): Promise<IElevenLabsVoice[]> {
+    const url = `${this._baseUrl}/voices`; // Menggunakan baseUrl dari config
+    const headers: AxiosRequestConfig['headers'] = {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      'xi-api-key': this._apiKey, // Menggunakan apiKey dari config
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      Accept: 'application/json',
+    };
+
+    this._logger.log(
+      `Mengambil suara yang tersedia dari ElevenLabs: URL=${url}`,
     );
-    // Sebaiknya throw error jika ini tidak seharusnya dipanggil
-    // throw new Error("Metode _build_master_prompt tidak diimplementasikan untuk ElevenLabsService.");
-    return ''; // Atau kembalikan string kosong jika kontrak mengharuskan
+
+    try {
+      const response = await firstValueFrom(
+        this._httpService.get<IElevenLabsVoicesResponse>(url, { headers }),
+      );
+      this._logger.log(
+        `Berhasil mengambil ${response.data.voices.length} suara dari ElevenLabs.`,
+      );
+      return response.data.voices.map((voice: any) => ({
+        voiceId: voice.voice_id,
+        name: voice.name,
+        samples:
+          voice.samples?.map((sample: any) => ({
+            sampleId: sample.sample_id,
+            fileName: sample.file_name,
+            mimeType: sample.mime_type,
+            sizeBytes: sample.size_bytes,
+            hash: sample.hash,
+          })) || null,
+        category: voice.category,
+        fineTuning: {
+          modelId: voice.fine_tuning?.model_id,
+          language: voice.fine_tuning?.language,
+          isAllowedToFineTune: voice.fine_tuning?.is_allowed_to_fine_tune,
+          fineTuningRequested: voice.fine_tuning?.fine_tuning_requested,
+          finetuningState: voice.fine_tuning?.finetuning_state,
+          verificationAttempts: voice.fine_tuning?.verification_attempts,
+          verificationFailures: voice.fine_tuning?.verification_failures || [],
+          verificationAttemptsCount:
+            voice.fine_tuning?.verification_attempts_count || 0,
+          sliceIds: voice.fine_tuning?.slice_ids,
+          manualVerification: voice.fine_tuning?.manual_verification,
+          manualVerificationRequested:
+            voice.fine_tuning?.manual_verification_requested,
+        },
+        labels: voice.labels || {},
+        description: voice.description,
+        previewUrl: voice.preview_url,
+        availableForTiers: voice.available_for_tiers || [],
+        settings: voice.settings
+          ? {
+              stability: voice.settings.stability,
+              similarityBoost: voice.settings.similarity_boost,
+              style: voice.settings.style,
+              useSpeakerBoost: voice.settings.use_speaker_boost,
+            }
+          : null,
+        sharing: voice.sharing,
+        highQualityBaseModelIds: voice.high_quality_base_model_ids || [],
+      }));
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response) {
+        const errorData = axiosError.response.data as any;
+        const errorMessage =
+          errorData?.detail?.message ||
+          errorData?.message ||
+          'Gagal mengambil daftar suara dari ElevenLabs.';
+        const errorStatus =
+          axiosError.response.status || HttpStatus.INTERNAL_SERVER_ERROR;
+        this._logger.error(
+          `Error dari API ElevenLabs (Status: ${errorStatus}) saat mengambil daftar suara: ${errorMessage}`,
+          JSON.stringify(errorData),
+        );
+        throw new HttpException(errorMessage, errorStatus);
+      } else if (axiosError.request) {
+        this._logger.error(
+          'Tidak ada respons dari API ElevenLabs saat mengambil daftar suara:',
+          axiosError.message,
+        );
+        throw new HttpException(
+          'Tidak ada respons dari layanan daftar suara Text-to-Speech.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      } else {
+        this._logger.error(
+          'Error saat menyiapkan permintaan ke ElevenLabs untuk daftar suara:',
+          axiosError.message,
+        );
+        throw new HttpException(
+          'Gagal menghubungi layanan daftar suara Text-to-Speech.',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
   }
 }

@@ -17,7 +17,7 @@ export interface IAiProvider {
    * @returns A Promise resolving to the parsed object from the AI provider's response. // Updated documentation
    * @throws {HttpException} If an error occurs during generation or parsing.
    */
-  generate_content(prompt: string): Promise<any>; // Changed method name to snake_case
+  generateContent(prompt: string): Promise<any>; // Changed method name to snake_case
 }
 
 /**

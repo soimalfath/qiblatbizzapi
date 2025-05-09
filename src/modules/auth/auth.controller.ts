@@ -118,7 +118,7 @@ export class AuthController {
     } catch (error) {
       throw new BadRequestException(
         error.message || 'Gagal mengirim email verifikasi',
-      ); 
+      );
     }
   }
 

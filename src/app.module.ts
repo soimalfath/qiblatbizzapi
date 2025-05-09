@@ -9,6 +9,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AiModule } from './modules/ai/ai.module';
 import { MailModule } from './modules/mailer/mailer.module';
 import { YoutubeModule } from './modules/youtube/youtube.module'; // Tambahkan impor ini
+import { CommonModule } from './modules/common/common.module';
 import { ConfigModule } from '@nestjs/config';
 import youtubeConfiguration from './config/youtube.config'; // Impor konfigurasi YouTube
 import databaseConfig from './config/database.config';
@@ -25,6 +26,7 @@ import elevenlabsConfig from './config/elevenlabs.config';
     AiModule,
     MailModule,
     YoutubeModule,
+    CommonModule,
     ConfigModule.forRoot({
       isGlobal: true, // Pastikan ConfigModule bersifat global jika belum
       load: [

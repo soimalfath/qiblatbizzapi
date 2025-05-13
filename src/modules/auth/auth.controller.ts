@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {
   Controller,
   Get,
@@ -28,8 +29,8 @@ import {
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService,
-    private configService: ConfigService,
+    private _authService: AuthService,
+    private _configService: ConfigService,
   ) {}
 
   @Get('google')
@@ -40,7 +41,8 @@ export class AuthController {
   @UseGuards(GoogleOauthGuard)
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     try {
-      const { access_token, refresh_token } = await this.authService.signIn(
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      const { access_token, refresh_token } = await this._authService.signIn(
         req.user,
       );
 
@@ -64,7 +66,7 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   async refreshTokens(@Req() req: Request, @Res() res: Response) {
     try {
-      const { access_token } = await this.authService.refreshTokens(
+      const { access_token } = await this._authService.refreshTokens(
         req.cookies['refresh_token'],
       );
       this.setAccessTokenCookie(res, access_token);
@@ -85,7 +87,7 @@ export class AuthController {
   @Post('register')
   async register(@Body() registeruser: RegisterManualUserDto) {
     try {
-      await this.authService.registerManualUser(registeruser);
+      await this._authService.registerManualUser(registeruser);
       return ResponseHelper.success('register user succes');
     } catch (error) {
       if (error instanceof HttpException) {
@@ -99,7 +101,7 @@ export class AuthController {
   @Post('verify/email')
   async verifEmail(@Body() confirmEmailDto: ConfirmEmailDto) {
     try {
-      await this.authService.verifyEmail(confirmEmailDto.token);
+      await this._authService.verifyEmail(confirmEmailDto.token);
       return ResponseHelper.success('succes verified email');
     } catch (error) {
       if (error instanceof HttpException) {
@@ -114,7 +116,7 @@ export class AuthController {
   async requestVerifEmail(@Req() req: Request): Promise<void> {
     try {
       const user = req.user as UserEntity;
-      await this.authService.sendVerificationEmail(user);
+      await this._authService.sendVerificationEmail(user);
     } catch (error) {
       throw new BadRequestException(
         error.message || 'Gagal mengirim email verifikasi',
@@ -126,7 +128,7 @@ export class AuthController {
   async login(@Body() userLogin: LoginDto, @Res() res: Response) {
     try {
       const { access_token, refresh_token } =
-        await this.authService.login(userLogin);
+        await this._authService.login(userLogin);
       this.setRefreshTokenCookie(res, refresh_token);
       this.setAccessTokenCookie(res, access_token);
       return res
@@ -159,7 +161,7 @@ export class AuthController {
   @Post('request/reset-password')
   async requestForgotPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     try {
-      await this.authService.sendEmailForgotPassword(resetPasswordDto.email);
+      await this._authService.sendEmailForgotPassword(resetPasswordDto.email);
       return ResponseHelper.success('Request reset password successfully');
     } catch (error) {
       const status = error.getStatus();
@@ -172,7 +174,7 @@ export class AuthController {
     @Body() confirmResetPasswordDto: ConfirmResetPasswordDto,
   ) {
     try {
-      await this.authService.verifyResetPassword(confirmResetPasswordDto);
+      await this._authService.verifyResetPassword(confirmResetPasswordDto);
       return ResponseHelper.success('reset password successfully');
     } catch (error) {
       const status = error.getStatus();

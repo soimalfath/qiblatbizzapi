@@ -3,7 +3,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class MailService {
-  constructor(private readonly mailService: MailerService) {}
+  constructor(private readonly _mailService: MailerService) {}
   async sendEmail(
     type: string,
     to: string,
@@ -11,8 +11,8 @@ export class MailService {
     confirmationLink: string,
   ): Promise<boolean> {
     try {
-      const templateData = await this.getTemplate(type);
-      await this.mailService.sendMail({
+      const templateData = await this._getTemplate(type);
+      await this._mailService.sendMail({
         to,
         subject: templateData.subject,
         template: templateData.template,
@@ -28,7 +28,7 @@ export class MailService {
       throw new Error(`Failed to send ${type} to ${to}`);
     }
   }
-  private async getTemplate(
+  private async _getTemplate(
     type: string,
   ): Promise<{ template: string; subject: string }> {
     const types = {

@@ -8,23 +8,23 @@ import { UpdateUserDto } from './dto/create-user.dto';
 export class UserService {
   constructor(
     @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
+    private _userRepository: Repository<UserEntity>,
   ) {}
 
   async getUserProfile(id: string) {
-    return await this.userRepository.findOne({ where: { id } });
+    return await this._userRepository.findOne({ where: { id } });
   }
 
   async updateUserProfile(email: string, updatedata: UpdateUserDto) {
-    const userExists = await this.userRepository.findOne({ where: { email } });
+    const userExists = await this._userRepository.findOne({ where: { email } });
     if (!userExists) throw new NotFoundException('User not found');
 
     Object.assign(userExists, updatedata);
-    return this.userRepository.save(userExists);
+    return this._userRepository.save(userExists);
   }
 
   async getAllUser() {
-    const users = await this.userRepository.find({
+    const users = await this._userRepository.find({
       where: { role: '1' as any },
     });
     return users;

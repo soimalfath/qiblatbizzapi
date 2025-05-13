@@ -22,7 +22,7 @@ import { ResponseHelper } from '../../utils/response.helper';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly _productsService: ProductsService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -34,7 +34,7 @@ export class ProductsController {
     try {
       const reqUser = req.user as UserEntity;
       const userId = reqUser.id;
-      const product = await this.productsService.create(
+      const product = await this._productsService.create(
         userId,
         createProductDto,
       );
@@ -62,7 +62,7 @@ export class ProductsController {
     try {
       const reqUser = req.user as UserEntity;
       const userId = reqUser.id;
-      const products = await this.productsService.findAll(userId);
+      const products = await this._productsService.findAll(userId);
       return res
         .status(HttpStatus.OK)
         .json(ResponseHelper.success('Succes get products', products));
@@ -88,8 +88,8 @@ export class ProductsController {
   ) {
     try {
       const user = req.user as UserEntity;
-      const Userid = user.id;
-      const product = await this.productsService.findOne(+id, Userid);
+      const userId = user.id;
+      const product = await this._productsService.findOne(+id, userId);
       return res
         .status(HttpStatus.OK)
         .json(ResponseHelper.success('Succes get products', product));
@@ -117,9 +117,9 @@ export class ProductsController {
     try {
       const user = req.user as UserEntity;
       const id = user.id;
-      const product = await this.productsService.findOne(+id, id);
+      const product = await this._productsService.findOne(+id, id);
       if (product) {
-        const products = await this.productsService.update(
+        const products = await this._productsService.update(
           +id,
           updateProductDto,
         );
@@ -154,9 +154,9 @@ export class ProductsController {
     try {
       const user = req.user as UserEntity;
       const userId = user.id;
-      const product = await this.productsService.findOne(+id, userId);
+      const product = await this._productsService.findOne(+id, userId);
       if (product) {
-        const result = await this.productsService.remove(+id);
+        const result = await this._productsService.remove(+id);
         if (result.affected !== 0) {
           return res
             .status(HttpStatus.OK)

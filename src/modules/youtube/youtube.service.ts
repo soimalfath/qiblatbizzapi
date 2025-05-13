@@ -54,6 +54,59 @@ export class YoutubeService {
   }
 
   /**
+   * Helper method to fetch details for multiple channels in batches.
+   * @param channelIds Array of YouTube channel IDs.
+   * @param hl Language code for the response.
+   * @returns A Map where keys are channel IDs and values are objects with imageUrl and subscriberCount.
+   */
+  private async _getChannelsDetailsBatch(
+    channelIds: string[],
+    hl?: string,
+  ): Promise<Map<string, { imageUrl?: string; subscriberCount?: string }>> {
+    const channelDetailsMap = new Map<
+      string,
+      { imageUrl?: string; subscriberCount?: string }
+    >();
+    if (!channelIds || channelIds.length === 0) {
+      return channelDetailsMap;
+    }
+
+    const uniqueChannelIds = Array.from(new Set(channelIds));
+    const batchSize = 50; // YouTube API allows up to 50 IDs per request for channels
+
+    for (let i = 0; i < uniqueChannelIds.length; i += batchSize) {
+      const batchIds = uniqueChannelIds.slice(i, i + batchSize);
+      const params = {
+        part: 'snippet,statistics',
+        id: batchIds.join(','),
+        key: this._apiKey,
+        hl,
+      };
+      const url = `${this._baseUrl}/channels`;
+      try {
+        this._logger.log(
+          `Fetching batch channel details. URL: ${url}, IDs count: ${batchIds.length}`,
+        );
+        const response = await firstValueFrom(
+          this._httpService.get(url, { params }),
+        );
+        response.data.items?.forEach((channel: any) => {
+          channelDetailsMap.set(channel.id, {
+            imageUrl: channel.snippet?.thumbnails?.default?.url, // Anda bisa memilih default, medium, atau high
+            subscriberCount: channel.statistics?.subscriberCount,
+          });
+        });
+      } catch (error) {
+        this._logger.error(
+          `Failed to fetch batch channel details for IDs: ${batchIds.join(',')}. Error: ${error.message}`,
+        );
+        // Melanjutkan untuk batch berikutnya, beberapa data channel mungkin hilang
+      }
+    }
+    return channelDetailsMap;
+  }
+
+  /**
    * Mengambil daftar video trending dari YouTube.
    * @param dto Parameter query untuk filter dan paginasi.
    * @returns Promise berisi daftar video trending dan info paginasi.
@@ -70,7 +123,6 @@ export class YoutubeService {
     } = dto;
 
     const params: Record<string, any> = {
-      // Added Record<string, any> for better type safety
       part: 'snippet,contentDetails,statistics',
       chart: 'mostPopular',
       maxResults,
@@ -79,7 +131,6 @@ export class YoutubeService {
       key: this._apiKey,
     };
 
-    // Conditionally add parameters to avoid sending undefined values
     if (regionCode) {
       params.regionCode = regionCode;
     }
@@ -98,8 +149,25 @@ export class YoutubeService {
       );
 
       const youtubeData = response.data;
+
+      const uniqueChannelIds = Array.from(
+        new Set(
+          youtubeData.items
+            ?.map((item: any) => item.snippet?.channelId)
+            .filter(Boolean) || [],
+        ),
+      ) as string[];
+
+      const channelsDataMap = await this._getChannelsDetailsBatch(
+        uniqueChannelIds,
+        hl,
+      );
+
       const items: TrendingVideoItemDto[] = youtubeData.items.map((item: any) =>
-        this._transformVideoItem(item),
+        this._transformVideoItem(
+          item,
+          channelsDataMap.get(item.snippet?.channelId), // Corrected line
+        ),
       );
 
       return {
@@ -133,7 +201,6 @@ export class YoutubeService {
     } = dto;
 
     const searchParams: Record<string, any> = {
-      // Added Record<string, any>
       part: 'snippet',
       q,
       order,
@@ -174,7 +241,7 @@ export class YoutubeService {
           part: 'snippet,contentDetails,statistics',
           id: videoIds.join(','),
           key: this._apiKey,
-          hl, // Assuming hl from search should be used for details too
+          hl,
         };
         const detailsUrl = `${this._baseUrl}/videos`;
         this._logger.log(
@@ -188,19 +255,33 @@ export class YoutubeService {
         });
       }
 
+      const uniqueChannelIds = Array.from(
+        new Set(
+          searchData.items
+            ?.map((item: any) => item.snippet?.channelId)
+            .filter(Boolean) || [],
+        ),
+      ) as string[];
+
+      const channelsDataMap = await this._getChannelsDetailsBatch(
+        uniqueChannelIds,
+        hl,
+      );
+
       const items: SearchVideoItemDto[] = searchData.items
         .filter((item: any) => item.id && item.id.videoId)
         .map((searchItem: any) =>
           this._transformSearchItem(
             searchItem,
             videoDetailsMap.get(searchItem.id.videoId),
+            channelsDataMap.get(searchItem.snippet?.channelId),
           ),
         );
 
       return {
         items,
         next_page_token: searchData.nextPageToken,
-        region_code: searchData.regionCode, // This comes from search API response
+        region_code: searchData.regionCode,
         page_info: {
           total_results: searchData.pageInfo.totalResults,
           results_per_page: searchData.pageInfo.resultsPerPage,
@@ -329,10 +410,14 @@ export class YoutubeService {
   /**
    * Mentransformasi item video dari respons YouTube API ke format DTO.
    * @param item Item video mentah dari API.
+   * @param channelDetails Detail channel opsional (gambar, subscriber).
    * @returns Objek TrendingVideoItemDto.
    * @private
    */
-  private _transformVideoItem(item: any): TrendingVideoItemDto {
+  private _transformVideoItem(
+    item: any,
+    channelDetails?: { imageUrl?: string; subscriberCount?: string },
+  ): TrendingVideoItemDto {
     const viewCount = parseInt(item.statistics?.viewCount || '0', 10);
     const publishedAtString = item.snippet?.publishedAt;
     const publishedAtMoment = publishedAtString
@@ -377,6 +462,9 @@ export class YoutubeService {
           : 'N/A',
       formatted_duration: this._formatYtDuration(item.contentDetails?.duration),
       tags: item.snippet?.tags || [],
+      // Add channel image and subscriber count
+      channel_image: channelDetails?.imageUrl,
+      subscriber_count: channelDetails?.subscriberCount,
     };
   }
 
@@ -468,12 +556,14 @@ export class YoutubeService {
    * diperkaya dengan detail video dari panggilan API terpisah.
    * @param searchApiItem Item mentah dari API pencarian.
    * @param videoApiItem Item mentah detail video dari API video (bisa undefined).
+   * @param channelDetails Detail channel opsional (gambar, subscriber).
    * @returns Objek SearchVideoItemDto.
    * @private
    */
   private _transformSearchItem(
     searchApiItem: any,
     videoApiItem?: any,
+    channelDetails?: { imageUrl?: string; subscriberCount?: string },
   ): SearchVideoItemDto {
     const searchSnippet = searchApiItem.snippet;
     // Prioritize videoApiItem details if available, as search snippet can be less detailed
@@ -514,25 +604,25 @@ export class YoutubeService {
       live_broadcast_content: searchSnippet?.liveBroadcastContent, // This is specific to search result snippet
       view_count: viewCount,
       like_count: likeCountRaw ? parseInt(likeCountRaw, 10) : null,
-      comment_count: statistics?.commentCount
+      comment_count: statistics?.commentCount // Assuming this was a typo and should be from statistics
         ? parseInt(statistics.commentCount, 10)
         : null,
-      duration: contentDetails?.duration || null,
+      duration: contentDetails?.duration,
       vph: vph !== null ? parseFloat(vph.toFixed(2)) : null,
-      formatted_view_count:
-        viewCount !== null ? this._formatNumber(viewCount) : 'N/A', // Handle null
+      formatted_view_count: this._formatNumber(viewCount),
       formatted_like_count: likeCountRaw
         ? this._formatNumber(parseInt(likeCountRaw, 10))
-        : 'N/A', // Handle null
-      formatted_vph: vph !== null ? `${this._formatNumber(vph)}/hr` : 'N/A', // Handle null
+        : null,
+      formatted_vph: vph !== null ? `${this._formatNumber(vph)}/hr` : 'N/A',
       time_since_upload:
         publishedAtMoment && publishedAtMoment.isValid()
           ? publishedAtMoment.fromNow()
           : 'N/A',
-      formatted_duration: contentDetails?.duration
-        ? this._formatYtDuration(contentDetails.duration)
-        : 'N/A', // Handle null
+      formatted_duration: this._formatYtDuration(contentDetails?.duration),
       tags: effectiveSnippet?.tags || [],
+      // Add channel image and subscriber count
+      channel_image: channelDetails?.imageUrl,
+      subscriber_count: channelDetails?.subscriberCount,
     };
   }
 

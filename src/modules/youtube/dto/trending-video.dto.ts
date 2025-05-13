@@ -13,7 +13,8 @@ export class TrendingVideoItemDto {
   like_count: number | null;
   comment_count: number | null;
   published_at: string;
-  duration: string;
+  duration?: string;
+  description?: string; // <-- Tambahkan ini
   vph: number;
   formatted_view_count: string;
   formatted_like_count: string | null;
@@ -21,6 +22,8 @@ export class TrendingVideoItemDto {
   time_since_upload: string;
   formatted_duration: string;
   tags: string[];
+  channel_image?: string;
+  subscriber_count?: string;
 }
 
 /**

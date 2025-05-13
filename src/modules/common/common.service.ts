@@ -1,21 +1,14 @@
-import { HttpService } from '@nestjs/axios';
+// import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { firstValueFrom, map, catchError } from 'rxjs';
+// import { firstValueFrom, map, catchError } from 'rxjs'; // Dihapus karena tidak lagi menggunakan HttpService
 import { CountryListItemDto } from './dto/country.dto';
+// Impor konstanta 'countries' dari file country.ts
+import { countries as countryData } from './country';
 
-/**
- * @interface RestCountryApiResponseItem
- * @description Interface parsial untuk item dalam respons API restcountries.com.
- * Hanya mencakup field yang kita butuhkan.
- */
-interface IRestCountryApiResponseItem {
-  name: {
-    common: string;
-    official: string;
-  };
-  cca2: string; // Kode negara Alpha-2
-  // Tambahkan field lain jika diperlukan di masa depan
-}
+// Interface ICountryData tidak lagi diperlukan karena kita mengimpor array yang sudah diketik
+// interface ICountryData {
+//   countries: CountryListItemDto[];
+// }
 
 /**
  * @class CommonService
@@ -24,58 +17,45 @@ interface IRestCountryApiResponseItem {
 @Injectable()
 export class CommonService {
   private readonly _logger = new Logger(CommonService.name);
-  private readonly _restCountriesApiUrl = 'https://restcountries.com/v3.1/all';
 
-  constructor(private readonly _httpService: HttpService) {}
+  constructor() {}
 
   /**
    * @method getCountries
-   * @description Mengambil daftar semua negara beserta kode region (Alpha-2).
+   * @description Mengambil daftar semua negara beserta kode region (Alpha-2) dari konstanta lokal.
    * @returns {Promise<CountryListItemDto[]>} Daftar negara yang telah diformat.
-   * @throws {HttpException} Jika terjadi kesalahan saat mengambil atau memproses data.
+   * @throws {HttpException} Jika terjadi kesalahan saat memproses data (seharusnya minimal dengan data statis).
    */
   async getCountries(): Promise<CountryListItemDto[]> {
-    this._logger.log('Fetching countries from external API...');
+    this._logger.log('Fetching countries from local constant...');
     try {
-      const response = await firstValueFrom(
-        this._httpService
-          .get<IRestCountryApiResponseItem[]>(this._restCountriesApiUrl)
-          .pipe(
-            map((axiosResponse) =>
-              axiosResponse.data.map((country) => ({
-                name: country.name.common,
-                regionCode: country.cca2,
-              })),
-            ),
-            catchError((error) => {
-              this._logger.error(
-                `Error fetching countries from ${this._restCountriesApiUrl}: ${error.message}`,
-                error.stack,
-              );
-              let status = HttpStatus.INTERNAL_SERVER_ERROR;
-              let message =
-                'Failed to fetch country data from external source.';
+      // Langsung gunakan data yang sudah diimpor
+      // countryData adalah array CountryListItemDto[]
+      if (!countryData || !Array.isArray(countryData)) {
+        // Pemeriksaan ini mungkin berlebihan jika country.ts selalu mengekspor array yang valid
+        this._logger.error(
+          'Country data is not loaded correctly or is not an array.',
+        );
+        throw new HttpException(
+          'Failed to load country data due to an internal issue.',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
 
-              if (error.response) {
-                status = error.response.status || status;
-                message = error.response.data?.message || message;
-              }
-              throw new HttpException(message, status);
-            }),
-          ),
-      );
+      if (countryData.length === 0) {
+        this._logger.warn('No countries found in the local data source.');
+      }
 
       this._logger.log(
-        `Successfully fetched and mapped ${response.length} countries.`,
+        `Successfully fetched ${countryData.length} countries from local constant.`,
       );
-      return response;
+      return countryData; // Kembalikan array langsung
     } catch (error) {
-      // Menangkap error yang mungkin dilempar dari catchError atau error lain
       if (error instanceof HttpException) {
-        throw error; // Lempar ulang HttpException yang sudah ada
+        throw error;
       }
       this._logger.error(
-        `Unexpected error in getCountries: ${error.message}`,
+        `Error processing countries from local constant: ${error.message}`,
         error.stack,
       );
       throw new HttpException(

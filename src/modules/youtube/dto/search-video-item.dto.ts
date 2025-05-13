@@ -27,4 +27,6 @@ export class SearchVideoItemDto {
   time_since_upload: string | null;
   formatted_duration: string | null;
   tags: string[];
+  channel_image?: string;
+  subscriber_count?: string;
 }

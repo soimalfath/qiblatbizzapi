@@ -11,6 +11,7 @@ import { MailModule } from './modules/mailer/mailer.module';
 import { YoutubeModule } from './modules/youtube/youtube.module'; // Tambahkan impor ini
 import { CommonModule } from './modules/common/common.module';
 import { ConfigModule } from '@nestjs/config';
+import { StreamingModule } from './modules/streaming/streaming.module';
 import youtubeConfiguration from './config/youtube.config'; // Impor konfigurasi YouTube
 import databaseConfig from './config/database.config';
 import config from './config/jwt.config';
@@ -26,6 +27,7 @@ import elevenlabsConfig from './config/elevenlabs.config';
     AiModule,
     MailModule,
     YoutubeModule,
+    StreamingModule,
     CommonModule,
     ConfigModule.forRoot({
       isGlobal: true, // Pastikan ConfigModule bersifat global jika belum

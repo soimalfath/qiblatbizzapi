@@ -1,8 +1,12 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common'; // Removed Inject
+import { ConfigService } from '@nestjs/config';
 import nodeMediaServer from 'node-media-server';
-import { CreateStreamDto } from './dto/create-stream.dto'; // Pastikan DTO ini ada atau buat baru
-import { v4 as uuidv4 } from 'uuid'; // Untuk generate streamId unik
-import { spawn, ChildProcess } from 'child_process'; // Untuk menjalankan ffmpeg
+import { CreateStreamDto, EVideoSourceType } from './dto/create-stream.dto'; // Update import
+import * as fs from 'fs'; // Import fs untuk cek file
+import { NotFoundException } from '@nestjs/common'; // Import NotFoundException
+import { v4 as uuidv4 } from 'uuid';
+import { spawn, ChildProcess } from 'child_process';
+import { IStreamingConfig } from '../../config/streaming.config'; // Removed streamingConfiguration default import
 
 /**
  * @interface IActiveStream
@@ -23,13 +27,15 @@ export class StreamingService implements OnModuleInit {
   private readonly _logger = new Logger(StreamingService.name);
   private _nms: nodeMediaServer;
   private readonly _activeStreams: Map<string, IActiveStream> = new Map();
+  private readonly _streamingConfig: IStreamingConfig;
 
   /**
    * @constructor
+   * @param _configService - Service untuk mengakses variabel konfigurasi.
    */
-  constructor() {
-    // Konfigurasi NodeMediaServer dipindahkan ke onModuleInit
-    // agar dijalankan setelah module diinisialisasi oleh NestJS
+  constructor(private readonly _configService: ConfigService) {
+    this._streamingConfig =
+      this._configService.get<IStreamingConfig>('streaming');
   }
 
   /**
@@ -49,20 +55,19 @@ export class StreamingService implements OnModuleInit {
   private _setupNodeMediaServer(): void {
     const config = {
       rtmp: {
-        port: 1935, // Port default RTMP
+        port: this._streamingConfig.rtmpPort, // Gunakan dari config
         chunk_size: 60000,
         gop_cache: true,
         ping: 30,
         ping_timeout: 60,
       },
       http: {
-        port: 8000, // Port untuk HTTP-FLV, dll.
-        mediaroot: './media', // Direktori untuk menyimpan file media (jika ada fitur recording)
-        allow_origin: '*', // Izinkan koneksi dari semua origin (sesuaikan untuk produksi)
+        port: this._streamingConfig.httpPort, // Gunakan dari config
+        mediaroot: this._streamingConfig.mediaRoot, // Gunakan dari config
+        allow_origin: this._streamingConfig.allowOrigin, // Gunakan dari config
       },
-      // Anda bisa menambahkan konfigurasi transcodin ffmpeg di sini jika NMS yang melakukan transcode
       // transcoding: {
-      //   ffmpeg: '/usr/bin/ffmpeg', // Sesuaikan path ke ffmpeg Anda
+      //   ffmpeg: this._streamingConfig.ffmpegPath, // Gunakan dari config jika NMS yang transcode
       //   tasks: [
       //     {
       //       app: 'live',
@@ -82,9 +87,6 @@ export class StreamingService implements OnModuleInit {
       this._logger.log(
         `[NodeMediaServer] preConnect: id=${id} args=${JSON.stringify(args)}`,
       );
-      // Anda bisa menambahkan logika otentikasi di sini, misalnya:
-      // const session = this.nms.getSession(id);
-      // if (!isValidToken(args.token)) { session.reject(); }
     });
 
     this._nms.on('postConnect', (id, args) => {
@@ -103,8 +105,6 @@ export class StreamingService implements OnModuleInit {
       this._logger.log(
         `[NodeMediaServer] prePublish: id=${id} StreamPath=${streamPath} args=${JSON.stringify(args)}`,
       );
-      // const session = this.nms.getSession(id);
-      // if (streamPath === '/live/forbiddenStreamKey') { session.reject(); }
     });
 
     this._nms.on('postPublish', (id, streamPath, args) => {
@@ -120,50 +120,81 @@ export class StreamingService implements OnModuleInit {
     });
 
     this._logger.log(
-      'Node Media Server is running on RTMP port 1935 and HTTP port 8000.',
+      `Node Media Server is running on RTMP port ${this._streamingConfig.rtmpPort} and HTTP port ${this._streamingConfig.httpPort}.`,
     );
   }
 
   /**
    * Memulai sesi streaming baru menggunakan ffmpeg untuk mengirim ke RTMP eksternal.
-   * Jika Anda ingin NMS yang menerima stream, logika akan berbeda.
    * @param {CreateStreamDto} createStreamDto - Data untuk memulai stream.
    * @returns {Promise<any>} Informasi mengenai stream yang dimulai.
    */
   async startStream(createStreamDto: CreateStreamDto): Promise<any> {
     const streamId = uuidv4();
-    const { videoSource, rtmpUrl, loop } = createStreamDto;
+    const { videoSource, rtmpUrl, loop, sourceType } = createStreamDto;
 
-    // Contoh: ffmpeg -re -stream_loop -1 -i "input.mp4" -c:v libx264 -c:a aac -f flv rtmp://target/live
     const ffmpegArgs = [
       '-re', // Baca input pada native frame rate
     ];
 
-    if (loop) {
-      ffmpegArgs.push('-stream_loop', '-1'); // Loop input video tanpa batas
+    // Penanganan berdasarkan sourceType
+    if (sourceType === EVideoSourceType.FILE) {
+      if (!fs.existsSync(videoSource)) {
+        this._logger.error(
+          `Video source file not found: ${videoSource} for stream ${streamId}`,
+        );
+        throw new NotFoundException(
+          `Video source file not found: ${videoSource}`,
+        );
+      }
+      if (loop) {
+        ffmpegArgs.push('-stream_loop', '-1'); // Loop input video tanpa batas
+      }
+      ffmpegArgs.push('-i', videoSource); // Input file
+    } else if (sourceType === EVideoSourceType.URL) {
+      // Untuk URL, FFmpeg akan menangani loop jika stream sumber mendukungnya atau jika kita menambahkan opsi spesifik
+      // Opsi -stream_loop mungkin tidak selalu berfungsi dengan input URL tergantung sumbernya.
+      // Jika loop diperlukan untuk URL, mungkin perlu pendekatan berbeda atau memastikan sumber URL mendukung loop.
+      if (loop) {
+        this._logger.warn(
+          `Looping for URL source (${videoSource}) might depend on the source itself or require specific ffmpeg flags not universally applicable with -stream_loop.`,
+        );
+        // Pertimbangkan untuk tidak menambahkan -stream_loop untuk URL secara default atau cari flag yang lebih cocok
+        // ffmpegArgs.push('-stream_loop', '-1'); // Contoh, tapi mungkin tidak efektif
+      }
+      ffmpegArgs.push('-i', videoSource); // Input URL
+    } else {
+      // Should not happen if DTO validation is correct
+      throw new Error(`Unsupported source type: ${sourceType}`);
     }
 
     ffmpegArgs.push(
-      '-i',
-      videoSource, // Input file
+      // Opsi transcoding (sesuaikan jika perlu)
+      // Saat ini menggunakan 'copy' untuk video jika memungkinkan, yang lebih ringan.
+      // Jika sumber URL adalah stream HLS/DASH, FFmpeg akan menanganinya.
       '-c:v',
-      'copy', // Salin codec video (tanpa transcode, lebih ringan)
+      'libx264', // Atau 'copy' jika Anda yakin sumbernya kompatibel & tidak butuh transcode video
+      '-preset',
+      'veryfast',
+      '-tune',
+      'zerolatency',
       '-c:a',
-      'aac', // Transcode audio ke AAC (umumnya diperlukan untuk RTMP)
+      'aac',
       '-ar',
-      '44100', // Sample rate audio
+      '44100',
       '-b:a',
-      '128k', // Bitrate audio
+      '128k',
       '-f',
-      'flv', // Format output FLV untuk RTMP
-      rtmpUrl, // URL RTMP tujuan
+      'flv',
+      rtmpUrl,
     );
 
     this._logger.log(
-      `Starting ffmpeg for stream ${streamId} with args: ${ffmpegArgs.join(' ')}`,
+      `Starting ffmpeg for stream ${streamId} (type: ${sourceType}) with args: ${ffmpegArgs.join(' ')}`,
     );
 
-    const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+    const ffmpegPath = this._streamingConfig.ffmpegPath || 'ffmpeg'; // Fallback ke 'ffmpeg' jika tidak ada di config
+    const ffmpegProcess = spawn(ffmpegPath, ffmpegArgs);
 
     this._activeStreams.set(streamId, {
       id: streamId,

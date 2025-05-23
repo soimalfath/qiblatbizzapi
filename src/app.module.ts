@@ -18,6 +18,7 @@ import config from './config/jwt.config';
 import appConfiguration from './config/app.config';
 import geminiConfig from './config/gemini.config';
 import elevenlabsConfig from './config/elevenlabs.config';
+import streamingConfiguration from './config/streaming.config'; // <-- Tambahkan impor ini
 
 @Module({
   imports: [
@@ -34,10 +35,11 @@ import elevenlabsConfig from './config/elevenlabs.config';
       load: [
         databaseConfig,
         config, // Ini adalah jwt.config.ts
-        youtubeConfiguration, // Tambahkan ini
-        geminiConfig, // Tambahkan ini
+        youtubeConfiguration,
+        geminiConfig,
         appConfiguration,
         elevenlabsConfig,
+        streamingConfiguration, // <-- Tambahkan ini
       ], // Tambahkan ini], // Tambahkan youtubeConfiguration ke array load
       // ... konfigurasi ConfigModule lainnya jika ada (misalnya validasi schema, envFilePath)
     }),

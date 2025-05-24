@@ -12,6 +12,7 @@ import { YoutubeModule } from './modules/youtube/youtube.module'; // Tambahkan i
 import { CommonModule } from './modules/common/common.module';
 import { ConfigModule } from '@nestjs/config';
 import { StreamingModule } from './modules/streaming/streaming.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import youtubeConfiguration from './config/youtube.config'; // Impor konfigurasi YouTube
 import databaseConfig from './config/database.config';
 import config from './config/jwt.config';
@@ -29,6 +30,7 @@ import streamingConfiguration from './config/streaming.config'; // <-- Tambahkan
     MailModule,
     YoutubeModule,
     StreamingModule,
+    WhatsappModule,
     CommonModule,
     ConfigModule.forRoot({
       isGlobal: true, // Pastikan ConfigModule bersifat global jika belum
